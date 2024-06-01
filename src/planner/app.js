@@ -3,11 +3,16 @@ import { V } from "../util.mjs";
 import * as lib from "../lib.mjs";
 
 import * as core from "../core.mjs";
+import { PROPERTYCACHE, GLOBALSTATE } from "../core.mjs";
+
+import * as odometry from "../odometry.mjs";
+import { Odometry2d, Odometry3d } from "../odometry.mjs";
+import * as app from "../app.mjs";
 
 import * as sublib from "./lib.mjs";
 
 
-class RLabel extends core.Odometry2d.Render {
+class RLabel extends Odometry2d.Render {
     #item;
 
     #text;
@@ -66,7 +71,7 @@ class RLabel extends core.Odometry2d.Render {
     get text() { return this.#text; }
     set text(v) { this.#text = String(v); }
 }
-class RLine extends core.Odometry2d.Render {
+class RLine extends Odometry2d.Render {
     #itemA; #itemB;
 
     constructor(odometry, itemA, itemB) {
@@ -114,7 +119,7 @@ class RLine extends core.Odometry2d.Render {
     }
     hasItemB() { return !!this.itemB; }
 }
-class RVisual extends core.Odometry2d.Render {
+class RVisual extends Odometry2d.Render {
     #dt;
     #nodes;
 
@@ -193,7 +198,7 @@ class RVisual extends core.Odometry2d.Render {
         this.#nodes = v.map(v => new sublib.Project.Node(v));
     }
 }
-class RVisualItem2d extends core.Odometry2d.Robot {
+class RVisualItem2d extends Odometry2d.Robot {
     #visual;
     #interp;
 
@@ -253,7 +258,7 @@ class RVisualItem2d extends core.Odometry2d.Robot {
         this.#interp = v;
     }
 }
-class RVisualItem3d extends core.Odometry3d.Render {
+class RVisualItem3d extends Odometry3d.Render {
     #visual;
     #interp;
 
@@ -308,7 +313,7 @@ class RVisualItem3d extends core.Odometry3d.Render {
         this.#interp = v;
     }
 }
-class RSelect extends core.Odometry2d.Render {
+class RSelect extends Odometry2d.Render {
     #a; #b;
 
     constructor(odometry) {
@@ -347,7 +352,7 @@ class RSelect extends core.Odometry2d.Render {
     get bY() { return this.b.y; }
     set bY(v) { this.b.y = v; }
 }
-class RSelectable extends core.Odometry2d.Render {
+class RSelectable extends Odometry2d.Render {
     #item;
     #renderObject;
 
@@ -363,9 +368,9 @@ class RSelectable extends core.Odometry2d.Render {
             if (!this.hasItem()) return;
             type = (this.item instanceof sublib.Project.Node) ? "node" : (this.item instanceof sublib.Project.Obstacle) ? "obstacle" : null;
             if (type == "node") {
-                this.renderObject = new core.Odometry2d.Robot(this, 0, "Waypoint");
+                this.renderObject = new Odometry2d.Robot(this, 0, "Waypoint");
             } else if (type == "obstacle") {
-                this.renderObject = new core.Odometry2d.Obstacle(this);
+                this.renderObject = new Odometry2d.Obstacle(this);
             }
         });
 
@@ -402,7 +407,7 @@ class RSelectable extends core.Odometry2d.Render {
     hasItem() { return !!this.item; }
     get renderObject() { return this.#renderObject; }
     set renderObject(v) {
-        v = (v instanceof core.Odometry2d.Render) ? v : null;
+        v = (v instanceof Odometry2d.Render) ? v : null;
         if (this.renderObject == v) return;
         if (this.hasRenderObject())
             this.remRender(this.renderObject);
@@ -460,7 +465,7 @@ class RSelectable extends core.Odometry2d.Render {
     }
 }
 
-export default class App extends core.AppFeature {
+export default class App extends app.AppFeature {
     static PROJECTCLASS = sublib.Project;
 
     constructor() {
@@ -479,7 +484,7 @@ export default class App extends core.AppFeature {
                             "separator",
                         ];
                         itms.forEach((data, i) => {
-                            let itm = App.Menu.Item.fromObj(data);
+                            let itm = core.Menu.Item.fromObj(data);
                             if (util.is(data, "obj")) {
                                 if (!("click" in data)) data.click = () => this.post("cmd-"+data.id);
                                 itm.addHandler("trigger", e => data.click());
@@ -494,7 +499,7 @@ export default class App extends core.AppFeature {
                             "separator",
                         ];
                         itms.forEach((data, i) => {
-                            let itm = App.Menu.Item.fromObj(data);
+                            let itm = core.Menu.Item.fromObj(data);
                             if (util.is(data, "obj")) {
                                 if (!("click" in data)) data.click = () => this.post("cmd-"+data.id);
                                 itm.addHandler("trigger", e => data.click());
@@ -725,63 +730,63 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         const odometryContextMenu = e => {
             if (this.choosing) return;
             let itm;
-            let menu = new core.App.Menu();
-            itm = menu.addItem(new core.App.Menu.Item("Add Node", "add"));
+            let menu = new core.Menu();
+            itm = menu.addItem(new core.Menu.Item("Add Node", "add"));
             itm.addHandler("trigger", e => {
                 this.app.post("cmd-addnode");
             });
-            itm = menu.addItem(new core.App.Menu.Item("Add Obstacle", "add"));
+            itm = menu.addItem(new core.Menu.Item("Add Obstacle", "add"));
             itm.addHandler("trigger", e => {
                 this.app.post("cmd-addobstacle");
             });
-            itm = menu.addItem(new core.App.Menu.Item("Add Path", "add"));
+            itm = menu.addItem(new core.Menu.Item("Add Path", "add"));
             itm.addHandler("trigger", e => {
                 this.app.post("cmd-addpath");
             });
-            menu.addItem(new core.App.Menu.Divider());
-            itm = menu.addItem(new core.App.Menu.Item("Cut"));
+            menu.addItem(new core.Menu.Divider());
+            itm = menu.addItem(new core.Menu.Item("Cut"));
             itm.accelerator = "CmdOrCtrl+X";
             itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 this.cut();
             });
-            itm = menu.addItem(new core.App.Menu.Item("Copy"));
+            itm = menu.addItem(new core.Menu.Item("Copy"));
             itm.accelerator = "CmdOrCtrl+C";
             itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 this.copy();
             });
-            itm = menu.addItem(new core.App.Menu.Item("Paste"));
+            itm = menu.addItem(new core.Menu.Item("Paste"));
             itm.accelerator = "CmdOrCtrl+V";
             itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 this.paste();
             });
-            itm = menu.addItem(new core.App.Menu.Item("Select All"));
+            itm = menu.addItem(new core.Menu.Item("Select All"));
             itm.accelerator = "CmdOrCtrl+A";
             itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 if (!this.hasProject()) return;
                 this.selected = this.project.items;
             });
-            menu.addItem(new core.App.Menu.Divider());
-            itm = menu.addItem(new core.App.Menu.Item("Edit"));
+            menu.addItem(new core.Menu.Divider());
+            itm = menu.addItem(new core.Menu.Item("Edit"));
             itm.addHandler("trigger", e => {
                 this.panel = "objects";
             });
-            itm = menu.addItem(new core.App.Menu.Item("Delete"));
+            itm = menu.addItem(new core.Menu.Item("Delete"));
             itm.addHandler("trigger", e => {
                 if (this.choosing) return;
                 if (!this.hasProject()) return;
                 this.selected.forEach(id => this.project.remItem(id));
             });
-            this.app.contextMenu = menu;
-            this.app.placeContextMenu(e.pageX, e.pageY);
+            core.Menu.contextMenu = menu;
+            core.Menu.placeContextMenu(e.pageX, e.pageY);
         };
 
         let cursorOverride = false;
 
-        this.#odometry2d = new core.Odometry2d();
+        this.#odometry2d = new Odometry2d();
         this.eDisplay.appendChild(this.odometry2d.elem);
         this.odometry2d.elem.classList.add("this");
         this.odometry2d.canvas.tabIndex = 1;
@@ -793,12 +798,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             const hovered = this.odometry2d.hovered;
             const hoveredPart = this.odometry2d.hoveredPart;
             if (this.choosing) {
-                if (!(hovered instanceof core.Odometry2d.Render)) return;
+                if (!(hovered instanceof Odometry2d.Render)) return;
                 if (!(hovered.parent instanceof RSelectable)) return;
                 this.chooseState.post("choose", hovered.parent.item, !!e.shiftKey);
                 return;
             }
-            if (!(hovered instanceof core.Odometry2d.Render && hovered.parent instanceof RSelectable)) {
+            if (!(hovered instanceof Odometry2d.Render && hovered.parent instanceof RSelectable)) {
                 this.clearSelected();
                 let selectItem = this.odometry2d.render.addRender(new RSelect(this.odometry2d.render));
                 selectItem.a = this.odometry2d.pageToWorld(e.pageX, e.pageY);
@@ -871,7 +876,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             }
         });
 
-        this.#odometry3d = new core.Odometry3d();
+        this.#odometry3d = new Odometry3d();
         this.eDisplay.appendChild(this.odometry3d.elem);
         this.odometry3d.canvas.tabIndex = 1;
         this.odometry3d.canvas.addEventListener("keydown", odometryKeyDown);
@@ -1053,7 +1058,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 if (!(id in itemRenders)) {
                     itemRenders[id] = {
                         d2: this.odometry2d.render.addRender(new RSelectable(this.odometry2d.render, null)),
-                        d3: this.odometry3d.addRender(new core.Odometry3d.Render(this.odometry3d, 0, 0, core.GLOBALSTATE.getProperty("active-robot").value)),
+                        d3: this.odometry3d.addRender(new Odometry3d.Render(this.odometry3d, 0, 0, core.GLOBALSTATE.getProperty("active-robot").value)),
                     };
                     itemRenders[id].d3.color = "--cb";
                 }
@@ -1061,7 +1066,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 render = itemRenders[id].d2;
                 render.item = itms[id];
                 render.selected = this.isSelected(render);
-                if (render.renderObject instanceof core.Odometry2d.Robot)
+                if (render.renderObject instanceof Odometry2d.Robot)
                     render.renderObject.size = this.project.robotW;
                 render = itemRenders[id].d3;
                 render.defaultComponent.pos = itms[id].pos;
@@ -1073,7 +1078,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!cursorOverride) {
                 const hovered = this.odometry2d.hovered;
                 const hoveredPart = this.odometry2d.hoveredPart;
-                if (!(hovered instanceof core.Odometry2d.Render)) this.odometry2d.canvas.style.cursor = "crosshair";
+                if (!(hovered instanceof Odometry2d.Render)) this.odometry2d.canvas.style.cursor = "crosshair";
                 else if (!(hovered.source instanceof RSelectable)) this.odometry2d.canvas.style.cursor = "crosshair";
                 else this.odometry2d.canvas.style.cursor = hovered.source.hover(hoveredPart);
             }
@@ -1811,7 +1816,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             "§arrow-h",
             "§arrow-t",
             "§target",
-        ].map(type => { return { value: type, name: core.Odometry2d.Robot.getTypeName(type) }; })));
+        ].map(type => { return { value: type, name: Odometry2d.Robot.getTypeName(type) }; })));
         this.fType.app = this.app;
         this.fType.addHandler("change-value", () => {
             if (!this.fType.hasValue()) return;

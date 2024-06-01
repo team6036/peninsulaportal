@@ -38,13 +38,11 @@ const MAIN = async () => {
         return console.log(`${yr}-${mon}-${d} ${hr}:${min}:${s}.${ms}`, ...a);
     };
 
-    log("< IMPORTING ASYNCHRONOUSLY >");
+    log("< IMPORTING CORE >");
 
-    const util = await import("./util.mjs");
+    const util = await import("../util.mjs");
     const V = util.V;
-    const lib = await import("./lib.mjs");
-
-    log("< IMPORTED ASYNCHRONOUSLY >");
+    const lib = await import("../lib.mjs");
 
     const os = require("os");
 
@@ -53,8 +51,15 @@ const MAIN = async () => {
     lib.FSOperator.path = path;
     lib.FSOperator.fs = fs;
 
-    const cp = require("child_process");
+    const { Process, ProcessManager } = await import("./processes.mjs");
+    const { Client, ClientManager } = await import("./clients.mjs");
+    const { TBAClient, TBAClientManager } = await import("./tbaclients.mjs");
+
     const { URL } = require("url");
+
+    log("< IMPORTED CORE >");
+
+    log("< IMPORT ELECTRON >");
 
     const electron = require("electron");
     let showError = this.showError = async (name, type, e) => {
@@ -98,6 +103,8 @@ const MAIN = async () => {
     const app = this.app = electron.app;
     const ipc = electron.ipcMain;
 
+    log("< IMPORTED ELECTRON >");
+
     const lock = app.requestSingleInstanceLock();
     if (!lock) {
         log("< PRE-EXISTING INSTANCE - QUIT >");
@@ -105,14 +112,11 @@ const MAIN = async () => {
         return;
     }
 
+    log("< IMPORTING EXTRA >");
+
     const fetch = require("electron-fetch").default;
     const png2icons = require("png2icons");
     const compareVersions = require("compare-versions");
-
-    const sc = require("socket.io-client");
-    const ss = require("socket.io-stream");
-
-    const tba = require("tba-api-v3client");
 
     const ytdl = require("ytdl-core");
 
@@ -194,6 +198,8 @@ const MAIN = async () => {
         });
     };
 
+    log("< IMPORTED EXTRA >");
+
     const OS = Object.freeze({
         arch: os.arch(),
         platform: os.platform(),
@@ -232,43 +238,6 @@ const MAIN = async () => {
         }
     }
     Object.freeze(bootParams);
-
-    function simplify(s) {
-        s = String(s);
-        if (s.length > 20) s = s.slice(0, 20)+"...";
-        return s;
-    }
-    function mergeThings(dest, src) {
-        if (util.is(dest, "arr")) {
-            dest.push(...util.ensure(src, "arr"));
-            return dest;
-        } else if (util.is(dest, "obj")) {
-            src = util.ensure(src, "obj");
-            for (let k in src) {
-                if (k in dest) dest[k] = mergeThings(dest[k], src[k]);
-                else dest[k] = src[k];
-            }
-            return dest;
-        }
-        return (src == null) ? dest : src;
-    }
-    function isEmpty(o) {
-        if (util.is(o, "arr")) return o.length <= 0;
-        if (util.is(o, "obj")) return isEmpty(Object.keys(o));
-        return o == null;
-    }
-    function cleanupEmpties(o) {
-        if (util.is(o, "arr"))
-            return Array.from(o).map(o => cleanupEmpties(o)).filter(o => !isEmpty(o));
-        if (util.is(o, "obj")) {
-            for (let k in o) {
-                o[k] = cleanupEmpties(o[k]);
-                if (isEmpty(o[k])) delete o[k];
-            }
-            return o;
-        }
-        return isEmpty(o) ? null : o;
-    }
 
     const DATASCHEMA = [
         /\.DS_Store/,
@@ -345,553 +314,6 @@ const MAIN = async () => {
         }
     }
 
-    class Process extends util.Target {
-        #id;
-        #tags;
-
-        #parent;
-
-        #process;
-
-        constructor(mode, ...a) {
-            super();
-
-            this.#id = null;
-            this.#tags = new Set();
-
-            this.#parent = null;
-
-            this.#process = 
-                (mode == "exec") ? cp.exec(...a) :
-                (mode == "execFile") ? cp.execFile(...a) :
-                (mode == "fork") ? cp.fork(...a) :
-                (mode == "spawn") ? cp.spawn(...a) :
-                null;
-            if (!this.process) throw new Error(`Invalid spawn mode '${mode}'`);
-            this.process.stdout.on("data", data => this.post("data", data));
-            let error = "";
-            this.process.stderr.on("data", data => {
-                error += util.TEXTDECODER.decode(data);
-            });
-            this.process.on("exit", () => {
-                if (error) this.post("error", error);
-                this.post("exit", this.process.exitCode);
-                this.terminate();
-            });
-            this.process.on("error", e => {
-                this.post("error", e);
-                this.post("exit", this.process.exitCode);
-                this.terminate();
-            });
-
-            this.addHandler("exit", data => (this.parent = null));
-        }
-
-        get id() { return this.#id; }
-        set id(v) {
-            v = (v == null) ? null : String(v);
-            if (this.id == v) return;
-            this.#id = v;
-        }
-        get tags() { return [...this.#tags]; }
-        set tags(v) {
-            v = util.ensure(v, "arr");
-            this.clearTags();
-            this.addTag(v);
-        }
-        clearTags() {
-            let tags = this.tags;
-            tags.forEach(tag => this.remTag(tag));
-            return tags;
-        }
-        hasTag(tag) {
-            return this.#tags.has(tag);
-        }
-        addTag(...tags) {
-            return util.Target.resultingForEach(tags, tag => {
-                this.#tags.add(tag);
-                return tag;
-            });
-        }
-        remTag(...tags) {
-            return util.Target.resultingForEach(tags, tag => {
-                this.#tags.delete(tag);
-                return tag;
-            });
-        }
-
-        get parent() { return this.#parent; }
-        set parent(v) {
-            v = (v instanceof ProcessManager) ? v : null;
-            if (this.parent == v) return;
-            if (this.hasParent())
-                this.parent.remProcess(this);
-            this.#parent = v;
-            if (this.hasParent())
-                this.parent.addProcess(this);
-        }
-        hasParent() { return !!this.parent; }
-
-        get process() { return this.#process; }
-
-        async terminate() {
-            if (this.process.exitCode != null) return false;
-            this.process.kill("SIGKILL");
-            this.post("exit", null);
-            return true;
-        }
-    }
-    class ProcessManager extends util.Target {
-        #processes;
-
-        constructor() {
-            super();
-
-            this.#processes = new Set();
-        }
-
-        get processes() { return [...this.#processes]; }
-        set processes(v) {
-            v = util.ensure(v, "arr");
-            this.clearProcesses();
-            this.addProcess(v);
-        }
-        clearProcesses() {
-            let processes = this.processes;
-            this.remProcess(processes);
-            return processes;
-        }
-        hasProcess(process) {
-            if (!(process instanceof Process)) return false;
-            return this.#processes.has(process) && process.parent == this;
-        }
-        addProcess(...processes) {
-            return util.Target.resultingForEach(processes, process => {
-                if (!(process instanceof Process)) return false;
-                if (this.hasProcess(process)) return false;
-                this.#processes.add(process);
-                process.parent = this;
-                process.onAdd();
-                return process;
-            });
-        }
-        remProcess(...processes) {
-            return util.Target.resultingForEach(processes, process => {
-                if (!(process instanceof Process)) return false;
-                if (!this.hasProcess(process)) return false;
-                process.onRem();
-                this.#processes.delete(process);
-                process.parent = null;
-                return process;
-            });
-        }
-
-        getProcessById(id) {
-            for (let process of this.processes)
-                if (process.id == id)
-                    return process;
-            return null;
-        }
-        getProcessesByTag(tag) {
-            tag = String(tag);
-            return this.processes.filter(process => process.hasTag(tag));
-        }
-    }
-    class Client extends util.Target {
-        #id;
-        #tags;
-
-        #location;
-
-        #socket;
-
-        constructor(location) {
-            super();
-
-            this.#id = null;
-            this.#tags = new Set();
-
-            this.#location = String(location);
-
-            this.#socket = sc.connect(this.location, {
-                autoConnect: false,
-            });
-            const msg = async (data, ack) => {
-                data = util.ensure(data, "obj");
-                const name = String(data.name);
-                const payload = data.payload;
-                const meta = {
-                    location: this.location,
-                    connected: this.connected,
-                    socketId: this.socketId,
-                };
-                let results = [];
-                results.push(...(await this.postResult("msg", name, payload, meta)));
-                results.push(...(await this.postResult("msg-"+name, payload, meta)));
-                ack = util.ensure(ack, "func");
-                let r = util.ensure(results[0], "obj");
-                r.success = ("success" in r) ? (!!r.success) : true;
-                r.ts = util.getTime();
-                ack(r);
-            };
-            this.#socket.on("connect", () => msg({ name: "connect", ts: util.getTime() }));
-            this.#socket.on("disconnect", () => msg({ name: "disconnect", ts: util.getTime() }));
-            this.#socket.on("msg", (data, ack) => msg(data, ack));
-            ss(this.#socket).on("stream", async (ssStream, data, ack) => {
-                data = util.ensure(data, "obj");
-                const name = String(data.name);
-                const fname = String(data.fname);
-                const payload = data.payload;
-                const meta = {
-                    location: this.location,
-                    connected: this.connected,
-                    socketId: this.socketId,
-                };
-                let results = [];
-                results.push(...(await this.postResult("stream", name, fname, payload, meta, ssStream)));
-                results.push(...(await this.postResult("stream-"+name, fname, payload, meta, ssStream)));
-                ack = util.ensure(ack, "func");
-                let r = util.ensure(results[0], "obj");
-                r.success = ("success" in r) ? (!!r.success) : true;
-                r.ts = util.getTime();
-                ack(r);
-            });
-        }
-
-        get id() { return this.#id; }
-        set id(v) {
-            v = (v == null) ? null : String(v);
-            if (this.id == v) return;
-            this.#id = v;
-        }
-        get tags() { return [...this.#tags]; }
-        set tags(v) {
-            v = util.ensure(v, "arr");
-            this.clearTags();
-            this.addTag(v);
-        }
-        clearTags() {
-            let tags = this.tags;
-            this.remTag(tags);
-            return tags;
-        }
-        hasTag(tag) {
-            return this.#tags.has(tag);
-        }
-        addTag(...tags) {
-            return util.Target.resultingForEach(tags, tag => {
-                this.#tags.add(tag);
-                return tag;
-            });
-        }
-        remTag(...tags) {
-            return util.Target.resultingForEach(tags, tag => {
-                this.#tags.delete(tag);
-                return tag;
-            });
-        }
-
-        get location() { return this.#location; }
-
-        get connected() { return this.#socket.connected; }
-        get disconnected() { return !this.connected; }
-        get socketId() { return this.#socket.id; }
-
-        connect() { this.#socket.connect(); }
-        disconnect() { this.#socket.disconnect(); }
-
-        #parseResponse(res, rej, response) {
-            response = util.ensure(response, "obj");
-            const serverTs = util.ensure(response.ts, "num");
-            const clientTs = util.getTime();
-            if (!response.success) return rej(response.reason);
-            return res(response.payload);
-        }
-        async emit(name, payload) {
-            name = String(name);
-            return await new Promise((res, rej) => {
-                this.#socket.emit(
-                    "msg",
-                    {
-                        name: name,
-                        ts: util.getTime(),
-                        payload: payload,
-                    },
-                    response => this.#parseResponse(res, rej, response),
-                );
-            });
-        }
-        async stream(pth, name, payload) {
-            pth = WindowManager.makePath(pth);
-            if (!WindowManager.fileHas(pth)) return null;
-            const stream = fs.createReadStream(pth);
-            name = String(name);
-            const fname = path.basename(pth);
-            const ssStream = ss.createStream();
-            return await new Promise((res, rej) => {
-                ss(this.#socket).emit(
-                    "stream",
-                    ssStream,
-                    {
-                        name: name,
-                        fname: fname,
-                        payload: payload,
-                    },
-                    response => this.#parseResponse(res, rej, response),
-                );
-                stream.pipe(ssStream);
-            });
-        }
-    }
-    class ClientManager extends util.Target {
-        #clients;
-
-        constructor() {
-            super();
-
-            this.#clients = new Set();
-        }
-
-        get clients() { return [...this.#clients]; }
-        set clients(v) {
-            v = util.ensure(v, "arr");
-            this.clearClients();
-            this.addClient(v);
-        }
-        clearClients() {
-            let clients = this.clients;
-            this.remClient(clients);
-            return clients;
-        }
-        hasClient(client) {
-            if (!(client instanceof Client)) return false;
-            return this.#clients.has(client);
-        }
-        addClient(...clients) {
-            return util.Target.resultingForEach(clients, client => {
-                if (!(client instanceof Client)) return false;
-                if (this.hasClient(client)) return false;
-                this.#clients.add(client);
-                client.onAdd();
-                return client;
-            });
-        }
-        remClient(...clients) {
-            return util.Target.resultingForEach(clients, client => {
-                if (!(client instanceof Client)) return false;
-                if (!this.hasClient(client)) return false;
-                client.onRem();
-                this.#clients.delete(client);
-                return client;
-            });
-        }
-
-        getClientById(id) {
-            for (let client of this.clients)
-                if (client.id == id)
-                    return client;
-            return null;
-        }
-        getClientsByTag(tag) {
-            tag = String(tag);
-            return this.clients.filter(client => client.hasTag(tag));
-        }
-    }
-    class TBAClient extends util.Target {
-        #id;
-        #tags;
-
-        #client;
-        #tbaAPI;
-        #listAPI;
-        #teamAPI;
-        #eventAPI;
-        #matchAPI;
-        #districtAPI;
-
-        constructor() {
-            super();
-
-            this.#id = null;
-            this.#tags = new Set();
-
-            this.#client = tba.ApiClient.instance;
-            this.#tbaAPI = new tba.TBAApi();
-            this.#listAPI = new tba.ListApi();
-            this.#teamAPI = new tba.TeamApi();
-            this.#eventAPI = new tba.EventApi();
-            this.#matchAPI = new tba.MatchApi();
-            this.#districtAPI = new tba.DistrictApi();
-        }
-
-        get id() { return this.#id; }
-        set id(v) {
-            v = (v == null) ? null : String(v);
-            if (this.id == v) return;
-            this.#id = v;
-        }
-        get tags() { return [...this.#tags]; }
-        set tags(v) {
-            v = util.ensure(v, "arr");
-            this.clearTags();
-            this.addTag(v);
-        }
-        clearTags() {
-            let tags = this.tags;
-            this.remTag(tags);
-            return tags;
-        }
-        hasTag(tag) {
-            return this.#tags.has(tag);
-        }
-        addTag(...tags) {
-            return util.Target.resultingForEach(tags, tag => {
-                this.#tags.add(tag);
-                return tag;
-            });
-        }
-        remTag(...tags) {
-            return util.Target.resultingForEach(tags, tag => {
-                this.#tags.delete(tag);
-                return tag;
-            });
-        }
-
-        get client() { return this.#client; }
-        get tbaAPI() { return this.#tbaAPI; }
-        get listAPI() { return this.#listAPI; }
-        get teamAPI() { return this.#teamAPI; }
-        get eventAPI() { return this.#eventAPI; }
-        get matchAPI() { return this.#matchAPI; }
-        get districtAPI() { return this.#districtAPI; }
-
-        async invoke(invoke, ...a) {
-            let ref = String(invoke).split(".");
-            if (ref.length != 2) throw new Error(`Invalid invocation (split length) (${invoke})`);
-            let [api, f] = ref;
-            if (!api.endsWith("API")) throw new Error(`Invalid invocation (api name) (${invoke})`);
-            if (!(api in this)) throw new Error(`Invalid invocation (api existence) (${invoke})`);
-            api = this[api];
-            if (!(f in api)) throw new Error(`Invalid invocation (method existence) (${invoke})`);
-            let l = 1;
-            let apifs = {
-                tbaAPI: {
-                    getStatus: 0,
-                },
-                listAPI: {
-                    getTeamEventsStatusesByYear: 2,
-                    getTeamsByYear: 2,
-                    getTeamsByYearKeys: 2,
-                    getTeamsByYearSimple: 2,
-                },
-                teamAPI: {
-                    getTeamAwardsByYear: 2,
-                    getTeamEventAwards: 2,
-                    getTeamEventMatches: 2,
-                    getTeamEventMatchesKeys: 2,
-                    getTeamEventMatchesSimple: 2,
-                    getTeamEventStatus: 2,
-                    getTeamEventsByYear: 2,
-                    getTeamEventsByYearKeys: 2,
-                    getTeamEventsByYearSimple: 2,
-                    getTeamEventsStatusesByYear: 2,
-                    getTeamMatchesByYear: 2,
-                    getTeamMatchesByYearKeys: 2,
-                    getTeamMatchesByYearSimple: 2,
-                    getTeamMediaByTag: 2,
-                    getTeamMediaByTagYear: 3,
-                    getTeamMediaByYear: 2,
-                    getTeamsByYear: 2,
-                    getTeamsByYearKeys: 2,
-                    getTeamsByYearSimple: 2,
-                },
-                eventAPI: {
-                    getTeamEventAwards: 2,
-                    getTeamEventMatches: 2,
-                    getTeamEventMatchesKeys: 2,
-                    getTeamEventMatchesSimple: 2,
-                    getTeamEventStatus: 2,
-                    getTeamEventsByYear: 2,
-                    getTeamEventsByYearKeys: 2,
-                    getTeamEventsByYearSimple: 2,
-                    getTeamEventsStatusesByYear: 2,
-                },
-                matchAPI: {
-                    getTeamEventMatches: 2,
-                    getTeamEventMatchesKeys: 2,
-                    getTeamEventMatchesSimple: 2,
-                    getTeamMatchesByYear: 2,
-                    getTeamMatchesByYearKeys: 2,
-                    getTeamMatchesByYearSimple: 2,
-                },
-            };
-            if ((api in apifs) && (f in apifs[api])) l = apifs[api][f];
-            while (a.length > l+1) a.pop();
-            while (a.length < l) a.push(null);
-            if (a.length == l) a.push({});
-            a[l] = util.ensure(a[l], "obj");
-            return await new Promise((res, rej) => {
-                api[f](...a, (e, data, resp) => {
-                    if (e) return rej(e);
-                    res(data);
-                });
-            });
-        }
-    }
-    class TBAClientManager extends util.Target {
-        #clients;
-
-        constructor() {
-            super();
-
-            this.#clients = new Set();
-        }
-
-        get clients() { return [...this.#clients]; }
-        set clients(v) {
-            v = util.ensure(v, "arr");
-            this.clearClients();
-            this.addClient(v);
-        }
-        clearClients() {
-            let clients = this.clients;
-            this.remClient(clients);
-            return clients;
-        }
-        hasClient(client) {
-            if (!(client instanceof TBAClient)) return false;
-            return this.#clients.has(client);
-        }
-        addClient(...clients) {
-            return util.Target.resultingForEach(clients, client => {
-                if (!(client instanceof TBAClient)) return false;
-                if (this.hasClient(client)) return false;
-                this.#clients.add(client);
-                client.onAdd();
-                return client;
-            });
-        }
-        remClient(...clients) {
-            return util.Target.resultingForEach(clients, client => {
-                if (!(client instanceof TBAClient)) return false;
-                if (!this.hasClient(client)) return false;
-                client.onRem();
-                this.#clients.delete(client);
-                return client;
-            });
-        }
-
-        getClientById(id) {
-            for (let client of this.clients)
-                if (client.id == id)
-                    return client;
-            return null;
-        }
-        getClientsByTag(tag) {
-            tag = String(tag);
-            return this.clients.filter(client => client.hasTag(tag));
-        }
-    }
     const makeMenuDefault = (name, signal) => {
         if (!(signal instanceof util.Target)) signal = new util.Target();
         name = String(name);
@@ -924,6 +346,7 @@ const MAIN = async () => {
             },
         ];
     };
+
     class Window extends util.Target {
         #manager;
 
@@ -1095,7 +518,7 @@ const MAIN = async () => {
             }
             const onHolidayState = async holiday => {
                 let tag = "png";
-                let defaultIcon = path.join(__dirname, "assets", "app", "icon."+tag);
+                let defaultIcon = path.join(__dirname, "..", "assets", "app", "icon."+tag);
                 let icon = 
                     (holiday == null) ? defaultIcon :
                     util.ensure(util.ensure(await this.get("holiday-icons"), "obj")[holiday], "obj")[tag];
@@ -1182,8 +605,8 @@ const MAIN = async () => {
             });
 
             if (this.isModal)
-                this.window.loadURL("file://"+path.join(__dirname, "modal", "index.html")+"?name="+this.name.slice(6).toLowerCase());
-            else this.window.loadFile(path.join(__dirname, this.name.toLowerCase(), "index.html"));
+                this.window.loadURL("file://"+path.join(__dirname, "..", "modal", "index.html")+"?name="+this.name.slice(6).toLowerCase());
+            else this.window.loadFile(path.join(__dirname, "..", this.name.toLowerCase(), "index.html"));
 
             namefs = {
                 PORTAL: () => {
@@ -2000,7 +1423,7 @@ const MAIN = async () => {
                             stack = stack[name];
                         } else [stack[name], stack] = [v, stack[name]];
                     }
-                    o = cleanupEmpties(o);
+                    o = lib.cleanupEmpties(o);
                     await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
                     this.rootManager.check();
                     return stack;
@@ -2058,7 +1481,7 @@ const MAIN = async () => {
                             stack = v;
                         }
                     }
-                    o = cleanupEmpties(o);
+                    o = lib.cleanupEmpties(o);
                     await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
                     this.rootManager.check();
                     return stack;
@@ -2407,7 +1830,7 @@ const MAIN = async () => {
                         id = String(id);
                         pthId = String(pthId);
 
-                        const sublib = await import("./planner/lib.mjs");
+                        const sublib = await import("../planner/lib.mjs");
 
                         let project = null;
                         try {
@@ -2571,7 +1994,7 @@ const MAIN = async () => {
                     "exec-get": async id => {
                         id = String(id);
 
-                        const sublib = await import("./planner/lib.mjs");
+                        const sublib = await import("../planner/lib.mjs");
 
                         let project = null;
                         try {
@@ -2620,7 +2043,7 @@ const MAIN = async () => {
                     "install": async pth => {
                         const blacklist = ["__pycache__", "node_modules", "package-lock.json"];
                         await fs.promises.cp(
-                            path.join(__dirname, "..", "apps", "ptk"),
+                            path.join(__dirname, "..", "..", "apps", "ptk"),
                             path.join(pth, "ptk"),
                             {
                                 recursive: true, force: true,
@@ -2695,17 +2118,17 @@ const MAIN = async () => {
                         };
 
                         await writeLW(
-                            path.join(__dirname, "style.css"),
+                            path.join(__dirname, "..", "style.css"),
                             path.join(path.join(pth, "ptk", "app", "style.css")),
                         );
                         await writeMini(path.join(pth, "ptk", "app", "style2.css"));
 
                         await writeMini(
-                            path.join(__dirname, "util.mjs"),
+                            path.join(__dirname, "..", "util.mjs"),
                             path.join(path.join(pth, "ptk", "app", "util.mjs")),
                         );
                         await writeLW(
-                            path.join(__dirname, "lib.mjs"),
+                            path.join(__dirname, "..", "lib.mjs"),
                             path.join(pth, "ptk", "app", "lib.mjs"),
                         );
                         await writeMini(path.join(pth, "ptk", "app", "core.mjs"));
@@ -2730,7 +2153,7 @@ const MAIN = async () => {
             if (!this.started) return false;
             this.windowManager.send(k, ...a);
             k = String(k);
-            this.log(`SEND - ${k}(${a.map(v => simplify(JSON.stringify(v))).join(', ')})`);
+            this.log(`SEND - ${k}(${a.map(v => lib.simplify(JSON.stringify(v))).join(', ')})`);
             if (!this.hasWindow()) return false;
             this.window.webContents.send("send", k, ...a);
             return true;
@@ -3812,7 +3235,7 @@ const MAIN = async () => {
                     let data = null;
                     if (DATATYPES.includes(type)) data = await kfs._writable([type, "themes", "config.json"], "active");
                     else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["active-theme"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["active-theme"](type));
                     }
                     return (data == null) ? null : String(data);
                 },
@@ -3879,7 +3302,7 @@ const MAIN = async () => {
                     let data = null;
                     if (DATATYPES.includes(type)) data = await kfs._writable([type, "templates", "config.json"], "active");
                     else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["active-template"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["active-template"](type));
                     }
                     return (data == null) ? null : String(data);
                 },
@@ -3896,7 +3319,7 @@ const MAIN = async () => {
                             } catch (e) { return; }
                         }));
                     } else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["robots"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["robots"](type));
                     }
                     return util.ensure(data, "obj");
                 },
@@ -3934,7 +3357,7 @@ const MAIN = async () => {
                     let data = null;
                     if (DATATYPES.includes(type)) data = await kfs._writable([type, "robots", "config.json"], "active");
                     else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["active-robot"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["active-robot"](type));
                     }
                     return (data == null) ? null : String(data);
                 },
@@ -3951,7 +3374,7 @@ const MAIN = async () => {
                             } catch (e) { return; }
                         }));
                     } else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["holidays"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["holidays"](type));
                     }
                     return util.ensure(data, "obj");
                 },
@@ -4019,7 +3442,7 @@ const MAIN = async () => {
                     let data = null;
                     if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "socketHost");
                     else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["socket-host"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["socket-host"](type));
                     }
                     return (data == null) ? (await kfs["db-host"](type)) : String(data);
                 },
@@ -4027,7 +3450,7 @@ const MAIN = async () => {
                     let data = null;
                     if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "scoutURL");
                     else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["scout-url"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["scout-url"](type));
                     }
                     return (data == null) ? null : String(data);
                 },
@@ -4035,7 +3458,7 @@ const MAIN = async () => {
                     let data = null;
                     if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "isCompMode");
                     else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["comp-mode"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["comp-mode"](type));
                     }
                     return !!data;
                 },
@@ -4043,7 +3466,7 @@ const MAIN = async () => {
                     let data = null;
                     if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "nativeTheme");
                     else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["native-theme"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["native-theme"](type));
                     }
                     return util.ensure(data, "str", "system");
                 },
@@ -4051,7 +3474,7 @@ const MAIN = async () => {
                     let data = null;
                     if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "holidayOpt");
                     else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["holiday-opt"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["holiday-opt"](type));
                     }
                     return !!data;
                 },
@@ -4059,7 +3482,7 @@ const MAIN = async () => {
                     let data = null;
                     if (DATATYPES.includes(type)) data = await kfs._writable([type, "config.json"], "reducedMotion");
                     else {
-                        for (let type of DATATYPES) data = mergeThings(data, await kfs["reduced-motion"](type));
+                        for (let type of DATATYPES) data = lib.mergeThings(data, await kfs["reduced-motion"](type));
                     }
                     return !!data;
                 },
@@ -4092,7 +3515,7 @@ const MAIN = async () => {
                 "_fullpackage": async () => {
                     let content = "";
                     try {
-                        content = await WindowManager.fileRead(path.join(__dirname, "..", "package.json"));
+                        content = await WindowManager.fileRead(path.join(__dirname, "..", "..", "package.json"));
                     } catch (e) {}
                     let data = null;
                     try {
@@ -4141,7 +3564,7 @@ const MAIN = async () => {
                             [stack[name], stack] = [v, stack[name]];
                         }
                     }
-                    o = cleanupEmpties(o);
+                    o = lib.cleanupEmpties(o);
                     await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
                     this.rootManager.check();
                     return stack;
@@ -4292,7 +3715,7 @@ const MAIN = async () => {
                             stack = v;
                         }
                     }
-                    o = cleanupEmpties(o);
+                    o = lib.cleanupEmpties(o);
                     await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
                     this.rootManager.check();
                     return stack;

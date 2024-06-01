@@ -3,9 +3,12 @@ import { V } from "../util.mjs";
 import * as lib from "../lib.mjs";
 
 import * as core from "../core.mjs";
+import { PROPERTYCACHE, GLOBALSTATE } from "../core.mjs";
+
+import * as app from "../app.mjs";
 
 
-export default class AppModal extends core.App {
+export default class AppModal extends app.App {
     #id;
 
     #iinfos;

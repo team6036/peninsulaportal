@@ -3,11 +3,16 @@ import { V } from "../util.mjs";
 import * as lib from "../lib.mjs";
 
 import * as core from "../core.mjs";
+import { PROPERTYCACHE, GLOBALSTATE } from "../core.mjs";
+
+import * as app from "../app.mjs";
+
+import * as odometry from "../odometry.mjs";
 
 import * as THREE from "three";
 
 
-export default class App extends core.App {
+export default class App extends app.App {
     #eCanvas;
     #eTitlePart1;
     #eTitlePart2;
@@ -103,7 +108,7 @@ export default class App extends core.App {
                 update();
 
                 let model = null;
-                // core.LOADER.load("../../temp/model.glb", gltf => {
+                // odometry.LOADER.load("../../temp/model.glb", gltf => {
                 //     model = gltf.scene;
                 //     model.traverse(obj => {
                 //         if (!obj.isMesh) return;
