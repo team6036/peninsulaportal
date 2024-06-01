@@ -1196,7 +1196,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
         rotationsForm.isHorizontal = true;
         const fRotationsAdd = rotationsForm.addField(new core.Form.Button("add-rotation-transform", "Add", "special"));
         fRotationsAdd.addHandler("trigger", e => {
-            const robots = core.GLOBALSTATE.getProperty("robots").value;
+            const robots = GLOBALSTATE.getProperty("robots").value;
             const robot = util.ensure(robots[this.k], "obj");
             const zero = util.ensure(robot.zero, "obj");
             const rotations = util.ensure(zero.rotations, "arr");
@@ -1389,7 +1389,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     rotationsForm.isHorizontal = true;
                     const fRotationsAdd = fComponents[k].fRotationsAdd = rotationsForm.addField(new core.Form.Button("add-rotation-transform", "Add", "special"));
                     fRotationsAdd.addHandler("trigger", e => {
-                        const robots = core.GLOBALSTATE.getProperty("robots").value;
+                        const robots = GLOBALSTATE.getProperty("robots").value;
                         const robot = util.ensure(robots[this.k], "obj");
                         const components = util.ensure(robot.components, "obj");
                         const component = util.ensure(components[k], "obj");

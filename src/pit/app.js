@@ -217,12 +217,12 @@ export default class App extends app.App {
                 let angle = 0, color = null;
 
                 this.addHandler("update", delta => {
-                    let colorW = core.PROPERTYCACHE.getColor("--v8");
-                    let colorA = core.PROPERTYCACHE.getColor("--a");
-                    let colorV = core.PROPERTYCACHE.getColor("--v2");
-                    // let color1 = core.PROPERTYCACHE.getColor("--cr");
-                    // let color2 = core.PROPERTYCACHE.getColor("--cy");
-                    // let color3 = core.PROPERTYCACHE.getColor("--cb");
+                    let colorW = PROPERTYCACHE.getColor("--v8");
+                    let colorA = PROPERTYCACHE.getColor("--a");
+                    let colorV = PROPERTYCACHE.getColor("--v2");
+                    // let color1 = PROPERTYCACHE.getColor("--cr");
+                    // let color2 = PROPERTYCACHE.getColor("--cy");
+                    // let color3 = PROPERTYCACHE.getColor("--cb");
                     materials[0].color.set(colorW.toHex(false));
                     materials[1].color.set(colorA.toHex(false));
                     // materials[0].color.set(color1.toHex(false));
