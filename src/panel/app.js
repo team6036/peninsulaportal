@@ -6,7 +6,7 @@ import * as core from "../core.mjs";
 import { PROPERTYCACHE, GLOBALSTATE } from "../core.mjs";
 
 import * as odometry from "../odometry.mjs";
-import { Odometry2d, Odometry3d } from "../odometry.mjs";
+import { THREE, Odometry2d, Odometry3d } from "../odometry.mjs";
 import * as app from "../app.mjs";
 
 import Source from "../sources/source.js";
@@ -7889,9 +7889,9 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
         const render = this.odometry.addRender(new Odometry3d.Render(this.odometry, 0, "", "§box"));
         render.showObject = false;
-        const position = new odometry.THREE.Vector3();
-        const quaternion = new odometry.THREE.Quaternion();
-        const rotationQuaternion = odometry.THREE.Quaternion.fromRotationSequence([
+        const position = new THREE.Vector3();
+        const quaternion = new THREE.Quaternion();
+        const rotationQuaternion = THREE.Quaternion.fromRotationSequence([
             { axis: "x", angle: -90 },
             { axis: "z", angle: -90 },
         ]);

@@ -8,8 +8,7 @@ import { PROPERTYCACHE, GLOBALSTATE } from "../core.mjs";
 import * as app from "../app.mjs";
 
 import * as odometry from "../odometry.mjs";
-
-import * as THREE from "three";
+import { THREE } from "../odometry.mjs";
 
 
 export default class App extends app.App {
