@@ -69,12 +69,12 @@ export default class App extends app.App {
             }
 
             this.forms = [
-                new App.ApplicationForm(this),
-                new App.AppearanceForm(this),
-                new App.ThemesForm(this),
-                new App.TemplatesForm(this),
-                new App.RobotsForm(this),
-                new App.HolidaysForm(this),
+                new App.ApplicationForm(),
+                new App.AppearanceForm(),
+                new App.ThemesForm(),
+                new App.TemplatesForm(),
+                new App.RobotsForm(),
+                new App.HolidaysForm(),
             ];
             const pull = () => this.forms.forEach(form => form.pull());
             const timer = new util.Timer(true);
@@ -154,19 +154,16 @@ export default class App extends app.App {
 }
 App.Form = class AppForm extends util.Target {
     #name;
-    #app;
     
     #elem;
 
     #form;
     #fHeader;
     
-    constructor(name, app, header=null) {
+    constructor(name, header=null) {
         super();
 
         this.#name = String(name);
-        if (!(app instanceof App)) throw new Error("App is not instance of class App");
-        this.#app = app;
 
         this.#elem = document.createElement("div");
 
@@ -181,7 +178,7 @@ App.Form = class AppForm extends util.Target {
     }
 
     get name() { return this.#name; }
-    get app() { return this.#app; }
+    get app() { return App.instance; }
 
     get elem() { return this.#elem; }
 
@@ -221,8 +218,8 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
     #fSocketHost;
     #fScoutURL;
 
-    constructor(app) {
-        super("application", app);
+    constructor() {
+        super("application");
 
         let ignore = false;
 
@@ -248,9 +245,9 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
         this.fAppLogsClear.addHandler("trigger", async e => {
             const id = setInterval(() => {
                 const progress = Math.min(1, Math.max(0, util.ensure(window.cache.get("app-logs-clear-progress"), "num")));
-                if (this.hasApp()) this.app.progress = progress;
+                this.app.progress = progress;
                 if (progress < 1) return;
-                if (this.hasApp()) this.app.progress = null;
+                this.app.progress = null;
             }, 10);
             await window.api.send("cmd-app-logs-clear");
             clearInterval(id);
@@ -340,8 +337,8 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
     #fHoliday;
     #fReducedMotion;
 
-    constructor(app) {
-        super("appearance", app);
+    constructor() {
+        super("appearance");
 
         let ignore = false;
 
@@ -379,8 +376,6 @@ App.AppearanceForm = class AppAppearanceForm extends App.Form {
             await window.api.set("reduced-motion", this.fReducedMotion.value);
         });
 
-        this.fTheme.app = this.fNativeTheme.app = this.app;
-
         this.addHandler("pull", async () => {
             ignore = true;
             await Promise.all([
@@ -416,8 +411,8 @@ App.OverrideForm = class AppOverrideForm extends App.Form {
     #fImport;
     #fAdd;
 
-    constructor(name, app) {
-        super(name, app);
+    constructor(name) {
+        super(name);
 
         const fInherited = this.form.addField(new core.Form.SubForm("Database Inherited"));
         const inheritedForm = fInherited.form;
@@ -558,8 +553,8 @@ App.OverrideForm.Item = class AppOverrideFormItem extends util.Target {
     update(delta) { this.post("update", delta); }
 };
 App.ThemesForm = class AppThemesForm extends App.OverrideForm {
-    constructor(app) {
-        super("themes", app);
+    constructor() {
+        super("themes");
 
         this.fImport.header = "Import Theme";
         this.fAdd.header = "Create Theme";
@@ -769,8 +764,8 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
     }
 };
 App.TemplatesForm = class AppTemplatesForm extends App.OverrideForm {
-    constructor(app) {
-        super("templates", app);
+    constructor() {
+        super("templates");
 
         this.fImport.header = "Import Template";
         this.fAdd.header = "Create Template";
@@ -867,8 +862,6 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
         fName.type = "";
 
         const fSize = this.form.addField(new core.Form.Input2d("size"));
-        this.addHandler("add", () => (fSize.app = this.app));
-        this.addHandler("rem", () => (fSize.app = null));
         fSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
         fSize.baseType = fSize.activeType = "m";
         fSize.step = 0.1;
@@ -882,8 +875,6 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
         });
 
         const fRobotSize = this.form.addField(new core.Form.Input1d("robot-size"));
-        this.addHandler("add", () => (fRobotSize.app = this.app));
-        this.addHandler("rem", () => (fRobotSize.app = null));
         fRobotSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
         fRobotSize.baseType = fRobotSize.activeType = "m";
         fRobotSize.step = 0.1;
@@ -897,8 +888,6 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
         });
 
         const fRobotMass = this.form.addField(new core.Form.Input1d("robot-mass"));
-        this.addHandler("add", () => (fRobotMass.app = this.app));
-        this.addHandler("rem", () => (fRobotMass.app = null));
         fRobotMass.types = ["kg", "lb"];
         fRobotMass.baseType = fRobotMass.activeType = "kg";
         fRobotMass.step = 0.1;
@@ -1040,8 +1029,8 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
     }
 };
 App.RobotsForm = class AppRobotsForm extends App.OverrideForm {
-    constructor(app) {
-        super("robots", app);
+    constructor() {
+        super("robots");
 
         this.fImport.header = "Import Robot";
         this.fAdd.header = "Create Robot";
@@ -1512,8 +1501,8 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
     }
 };
 App.HolidaysForm = class AppHolidaysForm extends App.OverrideForm {
-    constructor(app) {
-        super("holidays", app);
+    constructor() {
+        super("holidays");
 
         this.fImport.header = "Import Holiday";
         this.fAdd.header = "Create Holiday";

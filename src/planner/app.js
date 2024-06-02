@@ -519,8 +519,8 @@ App.TitlePage = class AppTitlePage extends App.TitlePage {
 App.ProjectsPage = class AppProjectsPage extends App.ProjectsPage {
     #eTemplates;
 
-    constructor(app) {
-        super(app);
+    constructor() {
+        super();
 
         this.#eTemplates = document.createElement("div");
         this.eSubNav.appendChild(this.eTemplates);
@@ -583,100 +583,102 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #eEditNav;
     #eDivider;
 
-    constructor(app) {
-        super(app);
+    constructor() {
+        super();
 
-        this.app.eProjectInfoNameInput.addEventListener("change", e => {
-            if (this.choosing) return;
-            if (!this.hasProject()) return;
-            this.project.meta.name = this.app.eProjectInfoNameInput.value;
-            this.editorRefresh();
-        });
-        const cmdAdd = name => {
-            if (this.app.dragging) return;
-            name = String(name);
-            if (this.choosing) return;
-            if (!this.hasProject()) return;
-            this.app.dragData = name;
-            this.app.dragging = true;
-            this.app.eDrag.innerHTML = {
-                node: "<div class='global item selectable node'><div class='button'></div></div>",
-                obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>"
-            }[this.app.dragData];
-            let prevOverRender = false;
-            let ghostItem = null;
-            let item = {
-                node: new sublib.Project.Node({ pos: 0, heading: 0, useHeading: true, velocity: 0, velocityRot: 0, useVelocity: false }),
-                obstacle: new sublib.Project.Obstacle({ pos: 0, radius: 1 }),
-            }[this.app.dragData];
-            this.app.dragState.addHandler("move", e => {
-                let pos = new V(e.pageX, e.pageY);
-                let r;
-                r = this.odometry2d.canvas.getBoundingClientRect();
-                let overRender = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
-                if (prevOverRender != overRender) {
-                    prevOverRender = overRender;
-                    if (overRender) {
-                        ghostItem = this.odometry2d.render.addRender(new RSelectable(this.odometry2d.render, item));
-                        ghostItem.ghost = true;
-                    } else {
-                        this.odometry2d.render.remRender(ghostItem);
-                        ghostItem = null;
-                    }
-                }
-                if (this.app.eDrag.children[0])
-                    this.app.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
-                if (ghostItem && ghostItem.hasItem())
-                    ghostItem.item.pos.set(this.odometry2d.pageToWorld(pos));
-                const panel = this.objectsPanel;
-                r = panel.eSpawnDelete.getBoundingClientRect();
-                let over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
-                if (over) panel.eSpawnDelete.classList.add("hover");
-                else panel.eSpawnDelete.classList.remove("hover");
-            });
-            const stop = cancel => {
-                this.odometry2d.render.remRender(ghostItem);
-                this.app.eDrag.innerHTML = "";
-                if (!cancel && prevOverRender && this.hasProject()) this.project.addItem(item);
-                const panel = this.objectsPanel;
-                panel.eSpawnBox.classList.remove("delete");
-            };
-            this.app.dragState.addHandler("submit", () => stop(false));
-            this.app.dragState.addHandler("cancel", () => stop(true));
-            const panel = this.objectsPanel;
-            panel.eSpawnBox.classList.add("delete");
-        };
-        this.app.addHandler("cmd-addnode", () => cmdAdd("node"));
-        this.app.addHandler("cmd-addobstacle", () => cmdAdd("obstacle"));
-        this.app.addHandler("cmd-addpath", () => {
-            if (this.choosing) return;
-            if (!this.hasProject()) return;
-            this.choosing = true;
-            this.displayPath = new sublib.Project.Path();
-            this.chooseState.addHandler("choose", (itm, shift) => {
-                if (!this.hasDisplayPath()) return;
-                let pth = this.displayPath;
-                shift = !!shift;
-                if (!(itm instanceof sublib.Project.Node)) return;
-                if (shift) pth.remNode(itm);
-                else pth.addNode(itm);
-            });
-            this.chooseState.addHandler("done", () => {
-                if (!this.hasDisplayPath()) return;
-                let pth = this.displayPath;
+        this.addHandler("add", () => {
+            this.app.eProjectInfoNameInput.addEventListener("change", e => {
+                if (this.choosing) return;
                 if (!this.hasProject()) return;
-                this.project.addPath(pth);
+                this.project.meta.name = this.app.eProjectInfoNameInput.value;
+                this.editorRefresh();
             });
-            this.chooseState.addHandler("cancel", () => {
+            const cmdAdd = name => {
+                if (this.app.dragging) return;
+                name = String(name);
+                if (this.choosing) return;
+                if (!this.hasProject()) return;
+                this.app.dragData = name;
+                this.app.dragging = true;
+                this.app.eDrag.innerHTML = {
+                    node: "<div class='global item selectable node'><div class='button'></div></div>",
+                    obstacle: "<div class='global item selectable obstacle'><div class='button'></div><div class='radius'></div><div class='button radiusdrag'></div></div>",
+                }[this.app.dragData];
+                let prevOverRender = false;
+                let ghostItem = null;
+                let item = {
+                    node: new sublib.Project.Node({ pos: 0, heading: 0, useHeading: true, velocity: 0, velocityRot: 0, useVelocity: false }),
+                    obstacle: new sublib.Project.Obstacle({ pos: 0, radius: 1 }),
+                }[this.app.dragData];
+                this.app.dragState.addHandler("move", e => {
+                    let pos = new V(e.pageX, e.pageY);
+                    let r;
+                    r = this.odometry2d.canvas.getBoundingClientRect();
+                    let overRender = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
+                    if (prevOverRender != overRender) {
+                        prevOverRender = overRender;
+                        if (overRender) {
+                            ghostItem = this.odometry2d.render.addRender(new RSelectable(this.odometry2d.render, item));
+                            ghostItem.ghost = true;
+                        } else {
+                            this.odometry2d.render.remRender(ghostItem);
+                            ghostItem = null;
+                        }
+                    }
+                    if (this.app.eDrag.children[0])
+                        this.app.eDrag.children[0].style.visibility = overRender ? "hidden" : "inherit";
+                    if (ghostItem && ghostItem.hasItem())
+                        ghostItem.item.pos.set(this.odometry2d.pageToWorld(pos));
+                    const panel = this.objectsPanel;
+                    r = panel.eSpawnDelete.getBoundingClientRect();
+                    let over = (pos.x > r.left) && (pos.x < r.right) && (pos.y > r.top) && (pos.y < r.bottom);
+                    if (over) panel.eSpawnDelete.classList.add("hover");
+                    else panel.eSpawnDelete.classList.remove("hover");
+                });
+                const stop = cancel => {
+                    this.odometry2d.render.remRender(ghostItem);
+                    this.app.eDrag.innerHTML = "";
+                    if (!cancel && prevOverRender && this.hasProject()) this.project.addItem(item);
+                    const panel = this.objectsPanel;
+                    panel.eSpawnBox.classList.remove("delete");
+                };
+                this.app.dragState.addHandler("submit", () => stop(false));
+                this.app.dragState.addHandler("cancel", () => stop(true));
+                const panel = this.objectsPanel;
+                panel.eSpawnBox.classList.add("delete");
+            };
+            this.app.addHandler("cmd-addnode", () => cmdAdd("node"));
+            this.app.addHandler("cmd-addobstacle", () => cmdAdd("obstacle"));
+            this.app.addHandler("cmd-addpath", () => {
+                if (this.choosing) return;
+                if (!this.hasProject()) return;
+                this.choosing = true;
+                this.displayPath = new sublib.Project.Path();
+                this.chooseState.addHandler("choose", (itm, shift) => {
+                    if (!this.hasDisplayPath()) return;
+                    let pth = this.displayPath;
+                    shift = !!shift;
+                    if (!(itm instanceof sublib.Project.Node)) return;
+                    if (shift) pth.remNode(itm);
+                    else pth.addNode(itm);
+                });
+                this.chooseState.addHandler("done", () => {
+                    if (!this.hasDisplayPath()) return;
+                    let pth = this.displayPath;
+                    if (!this.hasProject()) return;
+                    this.project.addPath(pth);
+                });
+                this.chooseState.addHandler("cancel", () => {
+                });
             });
-        });
-        this.app.addHandler("cmd-maxmin", () => {
-            if (!this.hasProject()) return;
-            this.project.maximized = !this.project.maximized;
-        });
-        this.app.addHandler("cmd-resetdivider", () => {
-            if (!this.hasProject()) return;
-            this.project.sidePos = null;
+            this.app.addHandler("cmd-maxmin", () => {
+                if (!this.hasProject()) return;
+                this.project.maximized = !this.project.maximized;
+            });
+            this.app.addHandler("cmd-resetdivider", () => {
+                if (!this.hasProject()) return;
+                this.project.sidePos = null;
+            });
         });
 
         this.#selected = new Set();
@@ -959,12 +961,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             this.eDivider.classList.add("this");
         });
 
-        [this.#objectsPanel, this.#pathsPanel, this.#optionsPanel] = this.addPanel(
-            new App.ProjectPage.ObjectsPanel(this),
-            new App.ProjectPage.PathsPanel(this),
-            new App.ProjectPage.OptionsPanel(this),
-        );
-
         this.panel = "objects";
 
         this.addHandler("change-project", (...a) => {
@@ -1184,6 +1180,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
     }
 
+    async setup() {
+        [this.#objectsPanel, this.#pathsPanel, this.#optionsPanel] = this.addPanel(
+            new App.ProjectPage.ObjectsPanel(),
+            new App.ProjectPage.PathsPanel(),
+            new App.ProjectPage.OptionsPanel(),
+        );
+    }
+
     async applyTemplate(project, name) {
         if (!(project instanceof sublib.Project)) return false;
         const templates = GLOBALSTATE.getProperty("templates").value;
@@ -1337,7 +1341,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         return panels;
     }
     hasPanel(name) {
-        if (name instanceof App.ProjectPage.Panel) return this.hasPanel(name.name) && name.page == this;
+        if (name instanceof App.ProjectPage.Panel) return this.hasPanel(name.name);
         return name in this.#panels;
     }
     getPanel(name) {
@@ -1348,19 +1352,20 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     addPanel(...panels) {
         return util.Target.resultingForEach(panels, panel => {
             if (!(panel instanceof App.ProjectPage.Panel)) return false;
-            if (panel.page != this) return false;
             if (this.hasPanel(panel.name)) return false;
             this.#panels[panel.name] = panel;
             this.eEditContent.appendChild(panel.elem);
             this.eEditNav.appendChild(panel.btn);
             panel.onAdd();
+            let v = this.panel;
+            this.#panel = null;
+            this.panel = v;
             return panel;
         });
     }
     remPanel(...panels) {
         return util.Target.resultingForEach(panels, panel => {
             if (!(panel instanceof App.ProjectPage.Panel)) panel = this.getPanel(panel);
-            if (panel.page != this) return false;
             if (!this.hasPanel(panel)) return false;
             panel.onRem();
             delete this.#panel[panel.name];
@@ -1438,8 +1443,6 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
 App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
     #name;
 
-    #page;
-    #app;
     #items;
 
     #elem;
@@ -1447,14 +1450,11 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
     #eIcon;
     #eName;
 
-    constructor(page, name, icon) {
-        super(page);
+    constructor(name, icon) {
+        super();
 
         this.#name = String(name);
 
-        if (!(page instanceof App.ProjectPage)) throw new Error("Page is not of class ProjectPage");
-        this.#page = page;
-        this.#app = this.page.app;
         this.#items = [];
 
         this.#elem = document.createElement("div");
@@ -1477,8 +1477,8 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
 
     get name() { return this.#name; }
 
-    get page() { return this.#page; }
-    get app() { return this.#app; }
+    get app() { return App.instance; }
+    get page() { return this.app.projectPage; }
 
     get items() { return [...this.#items]; }
     set items(v) {
@@ -1618,8 +1618,8 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
     #eSpawnDelete;
     #eSpawns;
 
-    constructor(page) {
-        super(page, "objects", "cube-outline");
+    constructor() {
+        super("objects", "cube-outline");
 
         this.addItem(new App.ProjectPage.Panel.Header("Drag Items"));
 
@@ -1669,7 +1669,9 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 
         const getSelected = () => {
             if (!this.page.hasProject()) return [];
-            return this.page.selected.filter(id => this.page.project.hasItem(id)).map(id => this.page.project.getItem(id));
+            return this.page.selected
+                .filter(id => this.page.project.hasItem(id))
+                .map(id => this.page.project.getItem(id));
         };
 
         let forAny = [], forNode = [], forObstacle = [];
@@ -1681,7 +1683,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 
         this.#fPosition = form.addField(new core.Form.Input2d("position"));
         forAny.push(this.fPosition);
-        this.fPosition.app = this.app;
         this.fPosition.types = ["m", "cm", "mm", "yd", "ft", "in"];
         this.fPosition.baseType = this.fPosition.activeType = "m";
         this.fPosition.step = 0.1;
@@ -1710,7 +1711,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 
         this.#fRobotHeading = form.addField(new core.Form.Input1d("robot-heading"));
         forNode.push(this.fRobotHeading);
-        this.fRobotHeading.app = this.app;
         this.fRobotHeading.types = ["rad", "deg", "cycle"];
         this.fRobotHeading.baseType = "deg";
         this.fRobotHeading.activeType = "rad";
@@ -1739,7 +1739,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 
         this.#fRobotVelocity = form.addField(new core.Form.Input2d("robot-velocity"));
         forNode.push(this.fRobotVelocity);
-        this.fRobotVelocity.app = this.app;
         this.fRobotVelocity.types = ["m/s", "ft/s"];
         this.fRobotVelocity.baseType = this.fRobotVelocity.activeType = "m/s";
         this.fRobotVelocity.showToggle = true;
@@ -1770,7 +1769,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
 
         this.#fRobotRotVelocity = form.addField(new core.Form.Input1d("robot-rotational-velocity"));
         forNode.push(this.fRobotRotVelocity);
-        this.fRobotRotVelocity.app = this.app;
         this.fRobotRotVelocity.types = ["rad/s", "deg/s", "cycle/s"];
         this.fRobotRotVelocity.baseType = this.fRobotRotVelocity.activeType = "rad/s";
         this.fRobotRotVelocity.step = 0.1;
@@ -1817,7 +1815,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             "§arrow-t",
             "§target",
         ].map(type => { return { value: type, name: Odometry2d.Robot.getTypeName(type) }; })));
-        this.fType.app = this.app;
         this.fType.addHandler("change-value", () => {
             if (!this.fType.hasValue()) return;
             let itms = getSelected();
@@ -1860,7 +1857,6 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
         
         this.#fObstacleRadius = form.addField(new core.Form.Input1d("radius"));
         forObstacle.push(this.fObstacleRadius);
-        this.fObstacleRadius.app = this.app;
         this.fObstacleRadius.types = ["m", "cm", "mm", "yd", "ft", "in"];
         this.fObstacleRadius.baseType = this.fObstacleRadius.activeType = "m";
         this.fObstacleRadius.step = 0.1;
@@ -2030,8 +2026,8 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
     #ePathsBox;
     #eActivateBtn;
 
-    constructor(page) {
-        super(page, "paths", "analytics");
+    constructor() {
+        super("paths", "analytics");
 
         this.elem.addEventListener("click", e => {
             e.stopPropagation();
@@ -2137,7 +2133,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
             if (!this.page.project.hasPath(this.page.selectedPath)) return;
             let pth = this.page.project.getPath(this.page.selectedPath);
             this.generating = true;
-            this.app.markChange("*all");
+            this.app.markChange("*");
             await this.app.post("cmd-save");
             try {
                 await window.api.send("exec", this.page.project.id, pth.id);
@@ -2426,8 +2422,6 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
 };
 App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends util.Target {
     #panel;
-    #page;
-    #app;
 
     #path;
 
@@ -2441,8 +2435,6 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
 
         if (!(panel instanceof App.ProjectPage.PathsPanel)) throw new Error("Panel is not of class PathsPanel");
         this.#panel = panel;
-        this.#page = this.panel.page;
-        this.#app = this.page.app;
 
         this.#path = null;
 
@@ -2488,8 +2480,8 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
     }
 
     get panel() { return this.#panel; }
-    get page() { return this.#page; }
-    get app() { return this.#app; }
+    get app() { return App.instance; }
+    get page() { return this.app.projectPage; }
 
     get path() { return this.#path; }
     set path(v) {
@@ -2520,8 +2512,8 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
     #fScriptPython;
     #fScriptUseDefault;
 
-    constructor(page) {
-        super(page, "options", "settings-outline");
+    constructor() {
+        super("options", "settings-outline");
 
         const templates = GLOBALSTATE.getProperty("templates").value;
 
@@ -2529,7 +2521,6 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         this.addItem(form.elem);
 
         this.#fTemplate = form.addField(new core.Form.DropdownInput("template", [], "§null"));
-        this.fTemplate.app = this.app;
         this.fTemplate.isSubHeader = false;
         this.fTemplate.values = [{ value: "§null", name: "No Template" }, null, ...Object.keys(templates).map(k => {
             return { value: k, name: templates[k].name || k };
@@ -2551,7 +2542,6 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         form.addField(new core.Form.Header("Map Options"));
 
         this.#fSize = form.addField(new core.Form.Input2d("map-size"));
-        this.fSize.app = this.app;
         this.fSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
         this.fSize.baseType = this.fSize.activeType = "m";
         this.fSize.step = 0.1;
@@ -2571,7 +2561,6 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         });
 
         this.#fRobotSize = form.addField(new core.Form.Input1d("robot-size"));
-        this.fRobotSize.app = this.app;
         this.fRobotSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
         this.fRobotSize.baseType = this.fRobotSize.activeType = "m";
         this.fRobotSize.step = 0.1;
@@ -2587,7 +2576,6 @@ App.ProjectPage.OptionsPanel = class AppProjectPageOptionsPanel extends App.Proj
         });
 
         this.#fRobotMass = form.addField(new core.Form.Input1d("robot-mass"));
-        this.fRobotMass.app = this.app;
         this.fRobotMass.types = ["kg", "lb"];
         this.fRobotMass.baseType = this.fRobotMass.activeType = "kg";
         this.fRobotMass.step = 0.1;

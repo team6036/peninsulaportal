@@ -193,7 +193,6 @@ export default class App extends app.App {
                 form.addField(new core.Form.Button("btn", "Button", "special"));
                 form.addField(new core.Form.ColorInput("color-inp", "#00ffff"));
                 form.addField(new core.Form.DirentInput("dirent-inp", "/path/to/file.txt"));
-                form.addField(new core.Form.DropdownInput("dropdown-inp", ["a", "b", "c"], null)).app = this;
                 form.addField(new core.Form.Header("Header"));
                 form.addField(new core.Form.HTML(""));
                 form.addField(new core.Form.Input1d("inp-1d", 1));
