@@ -178,7 +178,7 @@ App.Form = class AppForm extends util.Target {
     }
 
     get name() { return this.#name; }
-    get app() { return App.instance; }
+    get app() { return app.App.instance; }
 
     get elem() { return this.#elem; }
 
