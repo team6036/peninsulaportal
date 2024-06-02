@@ -302,6 +302,67 @@ Source.Field = class SourceField {
         return "raw";
     }
 
+    static getDisplay(t, v=null) {
+        if (arguments.length == 1 && arguments[0] instanceof this)
+            [t, v] = [arguments[0].type, arguments[0].get()];
+        if (arguments.length == 1 && arguments[0] instanceof Source.Node)
+            [t, v] = arguments[0].hasField() ? [arguments[0].field.type, arguments[0].field.get()] : [null, null];
+        t = (t == null) ? null : String(t);
+        if (t == null || t.length <= 0) return {
+            name: v ? "folder" : "folder-outline",
+            color: "",
+        };
+        if (t.endsWith("[]")) {
+            t = t.slice(0, -2);
+            let display = this.getDisplay(t, (t == "boolean") ? true : null);
+            if (display == null) return null;
+            return {
+                src: "./assets/icons/array.svg",
+                color: display.color,
+            };
+        }
+        if (t.startsWith("struct:")) return {
+            name: "cube-outline",
+        };
+        if (!this.TYPES.includes(t)) return {
+            name: "document-outline",
+            color: "var(--cr)",
+        };
+        if (["double", "float", "int"].includes(t)) return {
+            src: "./assets/icons/number.svg",
+            color: "var(--cb)",
+        };
+        if (t == "boolean") return {
+            name: v ? "checkmark-circle" : "close-circle",
+            color: v ? "var(--cg)" : "var(--cr)",
+        };
+        if (t == "string") return {
+            name: "text",
+            color: "var(--cy)",
+        };
+        if (t == "structschema") return {
+            name: "map-outline",
+        };
+        if (t == "json") return {
+            src: "./assets/icons/object.svg",
+            color: "var(--co)",
+        };
+        return {
+            src: "./assets/icons/variable.svg",
+        };
+    }
+    static getRepresentation(o, alt=false) {
+        if (
+            util.is(o, "num") ||
+            util.is(o, "bool") ||
+            util.is(o, "str")
+        ) return (alt && util.is(o, "str")) ? `"${o}"` : String(o);
+        if (o instanceof Uint8Array) return alt ? util.TEXTDECODER.decode(o) : [...o].map(x => x.toString(16).padStart(2, "0")).join("");
+        if (util.is(o, "arr")) return (alt ? "" : "[")+[...o].map(o => this.getRepresentation(o)).join(", ")+(alt ? "" : "]");
+        if (util.is(o, "obj")) return JSON.stringify(o);
+        return String(o);
+    }
+
     constructor(source, pth, type) {
         if (!(source instanceof Source)) throw new Error("Source is not of class Source");
         this.#source = source;

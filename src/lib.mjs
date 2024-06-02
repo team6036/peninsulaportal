@@ -145,6 +145,18 @@ export function simplify(s) {
     if (s.length > 20) s = s.slice(0, 20)+"...";
     return s;
 }
+export function stringify(data) {
+    const dfs = (data, indent=0) => {
+        const space = new Array(indent).fill("  ").join("");
+        indent++;
+        if (util.is(data, "obj"))
+            return "\n"+Object.keys(data).map(k => space+k+": "+dfs(data[k], indent)).join("\n");
+        if (util.is(data, "arr"))
+            return "\n"+data.map((v, i) => space+i+": "+dfs(v, indent)).join("\n");
+        return String(data);
+    };
+    return dfs(data).trim();
+}
 
 export function mergeThings(dest, src) {
     if (util.is(dest, "arr")) {
