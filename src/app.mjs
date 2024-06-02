@@ -8,6 +8,15 @@ import { PROPERTYCACHE, GLOBALSTATE } from "./core.mjs";
 import { Odometry2d, Odometry3d } from "./odometry.mjs";
 
 
+window.util = util;
+window.lib = lib;
+
+Object.defineProperty(window, "app", {
+    get: () => App.instance,
+});
+
+
+let APPINSTANCE = null;
 export class App extends util.Target {
     #setupDone;
 
@@ -47,8 +56,16 @@ export class App extends util.Target {
     #eOverlay;
     #eRunInfo;
 
+    static get instance() {
+        if (!APPINSTANCE) (new this()).start();
+        return APPINSTANCE;
+    }
+
     constructor() {
         super();
+
+        if (APPINSTANCE) throw new Error("An instance of App has already been created");
+        APPINSTANCE = this;
 
         this.#setupDone = false;
 
@@ -122,6 +139,8 @@ export class App extends util.Target {
                 const eRunInfoFPSEntryValue = eRunInfoFPSEntry.children[1];
 
                 await this.postResult("post-setup");
+
+                await Promise.all(this.pages.map(async name => await this.getPage(name).setup()));
 
                 let appState = null;
                 try {
@@ -562,9 +581,6 @@ export class App extends util.Target {
 
     async setup() {
         if (this.setupDone) return false;
-
-        window.app = this;
-        window.util = util;
 
         window.api.onPerm(async () => {
             let perm = await this.getPerm();
@@ -1077,7 +1093,6 @@ export class App extends util.Target {
             if (!(pop instanceof App.PopupBase)) return false;
             if (this.hasPopup(pop)) this.remPopup(pop);
             this.#popups.add(pop);
-            pop.app = this;
             pop.addLinkedHandler(this, "result", () => this.remPopup(pop));
             window.api.set("closeable", this.popups.length <= 0);
             pop.onAdd();
@@ -1092,7 +1107,6 @@ export class App extends util.Target {
             this.#popups.delete(pop);
             pop.clearLinkedHandlers(this, "result");
             window.api.set("closeable", this.popups.length <= 0);
-            pop.app = null;
             return pop;
         });
     }
@@ -1265,7 +1279,6 @@ export class App extends util.Target {
     addPage(...pages) {
         return util.Target.resultingForEach(pages, page => {
             if (!(page instanceof App.Page)) return false;
-            if (page.app != this) return false;
             if (this.hasPage(page.name)) return false;
             this.#pages[page.name] = page;
             this.eMount.appendChild(page.elem);
@@ -1370,8 +1383,6 @@ export class App extends util.Target {
     async loadState(state) {}
 }
 App.PopupBase = class AppPopupBase extends util.Target {
-    #app;
-
     #id;
     #result;
 
@@ -1385,8 +1396,6 @@ App.PopupBase = class AppPopupBase extends util.Target {
 
     constructor() {
         super();
-
-        this.#app = null;
 
         this.#id = null;
         this.#result = null;
@@ -1413,7 +1422,7 @@ App.PopupBase = class AppPopupBase extends util.Target {
             this.#id = null;
             if (util.is(agent, "obj") && agent.os.platform == "darwin")
                 this.#id = await window.modal.spawn(this.constructor.NAME, {
-                    id: this.hasApp() ? this.app.id : null,
+                    id: this.app.id,
                     props: this.generateParams(),
                 });
             if (this.id == null) {
@@ -1425,12 +1434,12 @@ App.PopupBase = class AppPopupBase extends util.Target {
                 const onChange = async () => await this.doModify({ props: this.generateParams() });
                 this.addHandler("change", onChange);
                 onChange();
-                if (this.hasApp()) this.app.addLinkedHandler(this, "msg-modify", onModify);
+                this.app.addLinkedHandler(this, "msg-modify", onModify);
                 this.post("post-add");
             }
         });
         this.addHandler("rem", async () => {
-            if (this.hasApp()) this.app.clearLinkedHandlers(this, "msg-modify");
+            this.app.clearLinkedHandlers(this, "msg-modify");
             await this.doModify({
                 cmds: ["close"],
             });
@@ -1452,13 +1461,7 @@ App.PopupBase = class AppPopupBase extends util.Target {
         return params;
     }
 
-    get app() { return this.#app; }
-    set app(v) {
-        v = (v instanceof App) ? v : null;
-        if (this.app == v) return;
-        this.change("app", this.app, this.#app=v);
-    }
-    hasApp() { return !!this.app; }
+    get app() { return App.instance; }
 
     get id() { return this.#id; }
     async doModify(data) { return await window.api.sendMessage(this.id, "modify", data); }
@@ -1993,16 +1996,12 @@ App.Progress = class AppProgress extends App.CorePopup {
 };
 App.Page = class AppPage extends util.Target {
     #name;
-    #app;
     #elem;
 
-    constructor(name, app) {
+    constructor(name) {
         super();
 
         this.#name = String(name);
-
-        if (!(app instanceof App)) throw new Error("App is not of class App");
-        this.#app = app;
 
         this.#elem = document.createElement("div");
         this.elem.id = this.name+"PAGE";
@@ -2010,8 +2009,10 @@ App.Page = class AppPage extends util.Target {
     }
 
     get name() { return this.#name; }
-    get app() { return this.#app; }
+    get app() { return App.instance; }
     get elem() { return this.#elem; }
+
+    async setup() {}
 
     get state() { return {}; }
     async loadState(state) {}
@@ -2364,9 +2365,9 @@ export class AppFeature extends App {
             await this.postResult("pre-post-setup");
 
             [this.#titlePage, this.#projectsPage, this.#projectPage] = this.addPage(
-                new this.constructor.TitlePage(this),
-                new this.constructor.ProjectsPage(this),
-                new this.constructor.ProjectPage(this),
+                new this.constructor.TitlePage(),
+                new this.constructor.ProjectsPage(),
+                new this.constructor.ProjectPage(),
             );
 
             this.page = "TITLE";
@@ -2530,15 +2531,12 @@ export class AppFeature extends App {
     get eSaveBtn() { return this.#eSaveBtn; }
 }
 AppFeature.Dirent = class AppFeatureDirent extends util.Target {
-    #app;
     #parent;
     #name;
 
-    constructor(app, parent, name) {
+    constructor(parent, name) {
         super();
 
-        if (!(app instanceof AppFeature)) throw new Error("App is not of class AppFeature");
-        this.#app = app;
         if (!(parent instanceof AppFeature.DirentFolder)) parent = null;
         this.#parent = parent;
         if (this.hasParent()) this.parent.addChild(this);
@@ -2546,7 +2544,7 @@ AppFeature.Dirent = class AppFeatureDirent extends util.Target {
         this.#name = String(name);
     }
 
-    get app() { return this.#app; }
+    get app() { return App.instance; }
     get parent() { return this.#parent; }
     hasParent() { return !!this.parent; }
 
@@ -2557,8 +2555,8 @@ AppFeature.Dirent = class AppFeatureDirent extends util.Target {
 AppFeature.DirentFolder = class AppFeatureDirentFolder extends util.Target {
     #children;
 
-    constructor(app, parent, name, children) {
-        super(app, parent, name);
+    constructor(parent, name, children) {
+        super(parent, name);
 
         this.#children = new Set();
 
@@ -2602,8 +2600,8 @@ AppFeature.DirentFolder = class AppFeatureDirentFolder extends util.Target {
 AppFeature.DirentProject = class AppFeatureDirentProject extends util.Target {
     #id;
 
-    constructor(app, parent, id) {
-        super(app, parent, "");
+    constructor(parent, id) {
+        super(parent, "");
 
         this.#id = String(id);
     }
@@ -2626,8 +2624,8 @@ AppFeature.TitlePage = class AppFeatureTitlePage extends App.Page {
 
     static DESCRIPTION = "";
 
-    constructor(app) {
-        super("TITLE", app);
+    constructor() {
+        super("TITLE");
 
         this.#eTitle = document.createElement("div");
         this.elem.appendChild(this.eTitle);
@@ -2686,8 +2684,8 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
     #eLoading;
     #eEmpty;
 
-    constructor(app) {
-        super("PROJECTS", app);
+    constructor() {
+        super("PROJECTS");
 
         this.#buttons = new Set();
 
@@ -2750,8 +2748,11 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
         this.eContent.appendChild(this.eEmpty);
         this.eEmpty.classList.add("empty");
         this.eEmpty.textContent = "No projects here yet!";
-        this.app.addHandler("saved-projects", () => this.refresh());
-        this.app.addHandler("loaded-projects", () => this.refresh());
+
+        this.addHandler("add", () => {
+            this.app.addHandler("saved-projects", () => this.refresh());
+            this.app.addHandler("loaded-projects", () => this.refresh());
+        });
 
         this.eContent.addEventListener("click", e => {
             e.stopPropagation();
@@ -2845,8 +2846,10 @@ AppFeature.ProjectsPage = class AppFeatureProjectsPage extends App.Page {
                 btn.selected = btn.hasProject() && selected.has(btn.project.id);
             });
         };
-        this.app.addHandler("change-addProject", updateSelected);
-        this.app.addHandler("change-remProject", updateSelected);
+        this.addHandler("add", () => {
+            this.app.addHandler("change-addProject", updateSelected);
+            this.app.addHandler("change-remProject", updateSelected);
+        });
         this.addHandler("refresh", updateSelected);
         this.addHandler("trigger", (_, id, shift) => {
             id = (id == null) ? null : String(id);
@@ -3236,8 +3239,8 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
     #eNavBackButton;
     #eNavInfo;
 
-    constructor(app) {
-        super("PROJECT", app);
+    constructor() {
+        super("PROJECT");
 
         this.#progress = null;
         this.#progressHover = null;
@@ -3319,9 +3322,11 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             document.body.removeEventListener("keydown", onKeyDown);
         });
 
-        this.app.addHandler("perm", async () => {
-            this.app.markChange("*");
-            return await this.app.saveProjectsClean();
+        this.addHandler("add", () => {
+            this.app.addHandler("perm", async () => {
+                this.app.markChange("*");
+                return await this.app.saveProjectsClean();
+            });
         });
 
         const timer = new util.Timer(true);
@@ -3372,7 +3377,7 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
             if (itm) itm.accelerator = null;
             itm = this.app.menu.getItemById("close");
             if (itm) itm.accelerator = null;
-            this.app.markChange("*all");
+            this.app.markChange("*");
             await this.app.post("cmd-save");
             await this.postResult("post-leave", data);
         });

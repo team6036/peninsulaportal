@@ -183,19 +183,14 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
 };
 
 class ToolButton extends util.Target {
-    #app;
-
     #tabClass;
 
     #elem;
     #eIcon;
     #eName;
 
-    constructor(app, tabClass) {
+    constructor(tabClass) {
         super();
-
-        if (!(app instanceof App)) throw new Error("App is not instance of class App");
-        this.#app = app;
 
         if (!util.is(tabClass, "func")) throw new Error("Tab Class is not a constructor");
         if (!(tabClass.prototype instanceof Panel.Tab)) throw new Error("Tab Class is not of child class Tab");
@@ -270,7 +265,8 @@ class ToolButton extends util.Target {
         });
     }
 
-    get app() { return this.#app; }
+    get app() { return App.instance; }
+    get page() { return this.app.projectPage; }
     
     get tabClass() { return this.#tabClass; }
 
@@ -494,10 +490,6 @@ class Widget extends util.Target {
     #elem;
 
     #parent;
-    #hasParent;
-    #hasPageParent;
-    #page;
-    #app;
 
     constructor(a) {
         super();
@@ -515,23 +507,13 @@ class Widget extends util.Target {
 
     get parent() { return this.#parent; }
     set parent(v) {
-        v = (v instanceof Container) ? v : (v instanceof App.ProjectPage) ? v : null;
+        v = (v instanceof Container) ? v : null;
         if (this.parent == v) return;
         this.#parent = v;
-        this.compute();
     }
-    hasParent() { return this.#hasParent; }
-    hasPageParent() { return this.#hasPageParent; }
-    get page() { return this.#page; }
-    hasPage() { return !!this.page; }
-    get app() { return this.#app; }
-    hasApp() { return !!this.app; }
-    compute() {
-        this.#hasParent = this.parent instanceof Container;
-        this.#hasPageParent = this.parent instanceof App.ProjectPage;
-        this.#page = this.hasPageParent() ? this.parent : this.hasParent() ? this.parent.page : null;
-        this.#app = this.hasPage() ? this.page.app : null;
-    }
+    hasParent() { return !!this.parent; }
+    get app() { return App.instance; }
+    get page() { return this.app.projectPage; }
 
     contains(v) { return v == this; }
 
@@ -845,7 +827,6 @@ class Panel extends Widget {
 
         this.elem.classList.add("panel");
         this.elem.addEventListener("click", e => {
-            if (!this.hasPage()) return;
             this.page.activeWidget = this;
         }, { capture: true });
 
@@ -872,7 +853,6 @@ class Panel extends Widget {
         this.addHandler("rem", () => this.tabs.forEach(tab => tab.onRem()));
 
         this.eOptions.addEventListener("click", e => {
-            if (!this.hasApp()) return;
             e.stopPropagation();
             let itm;
             let menu = new core.Menu();
@@ -1055,8 +1035,6 @@ class Panel extends Widget {
 }
 Panel.Tab = class PanelTab extends util.Target {
     #parent;
-    #page;
-    #app;
 
     #elem;
     #eTab;
@@ -1111,7 +1089,6 @@ Panel.Tab = class PanelTab extends util.Target {
             itm.addHandler("trigger", e => {
                 onDrag(e);
             });
-            if (!this.hasApp()) return;
             core.Menu.contextMenu = menu;
             core.Menu.placeContextMenu(e.pageX, e.pageY);
         });
@@ -1126,11 +1103,10 @@ Panel.Tab = class PanelTab extends util.Target {
             const mousemove = () => {
                 if (cancel > 0) return cancel--;
                 mouseup();
-                if (!this.hasApp() || !this.hasParent()) return;
-                const app = this.app;
+                if (!this.hasParent()) return;
                 this.parent.remTab(this);
-                app.dragData = this;
-                app.dragging = true;
+                this.app.dragData = this;
+                this.app.dragging = true;
             };
             document.body.addEventListener("mouseup", mouseup);
             document.body.addEventListener("mousemove", mousemove);
@@ -1162,17 +1138,10 @@ Panel.Tab = class PanelTab extends util.Target {
         v = (v instanceof Panel) ? v : null;
         if (this.parent == v) return;
         this.#parent = v;
-        this.compute();
     }
     hasParent() { return !!this.parent; }
-    get page() { return this.#page; }
-    hasPage() { return !!this.page; }
-    get app() { return this.#app; }
-    hasApp() { return !!this.app; }
-    compute() {
-        this.#page = this.hasParent() ? this.parent.page : null;
-        this.#app = this.hasPage() ? this.page.app : null;
-    }
+    get app() { return App.instance; }
+    get page() { return this.app.projectPage; }
 
     get elem() { return this.#elem; }
     get eTab() { return this.#eTab; }
@@ -1346,7 +1315,6 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                     core.Menu.placeContextMenu(e.pageX, e.pageY);
                 },
                 drag: () => {
-                    if (!this.hasApp()) return;
                     if (!!data.disabled) return;
                     this.app.dragData = new data.class();
                     this.app.dragging = true;
@@ -1380,7 +1348,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             toolItems = lib.search(toolItems, ["name"], this.query).map(toolItemSelect);
             if (this.query.length > 0) {
                 let nodeItems = [];
-                if (this.hasPage() && this.page.hasSource()) {
+                if (this.page.hasSource()) {
                     let node = this.page.source.tree;
                     const dfs = node => {
                         let itm = new Panel.AddTab.NodeButton(node);
@@ -1408,7 +1376,6 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                                 core.Menu.placeContextMenu(e.pageX, e.pageY);
                             },
                             drag: () => {
-                                if (!this.hasApp() || !this.hasPage()) return;
                                 this.app.dragData = this.page.hasSource() ? this.page.source.tree.lookup(node.path) : null;
                                 this.app.dragging = true;
                             },
@@ -1468,7 +1435,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
             if (this.searchPart == "all") this.tags[0].iconSrc = "./assets/icons/variable.svg";
             this.placeholder = "Search "+this.searchPart.toLowerCase();
             let items = [];
-            if (this.hasPage() && this.page.hasSource()) {
+            if (this.page.hasSource()) {
                 let node = this.page.source.tree;
                 const dfs = node => {
                     let itm = new Panel.AddTab.NodeButton(node);
@@ -1501,7 +1468,6 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                                 core.Menu.placeContextMenu(e.pageX, e.pageY);
                             },
                             drag: () => {
-                                if (!this.hasApp() || !this.hasPage()) return;
                                 this.app.dragData = this.page.hasSource() ? this.page.source.tree.lookup(node.path) : null;
                                 this.app.dragging = true;
                             },
@@ -1967,7 +1933,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         });
         this.explorer.addHandler("drag", (e, pth) => {
             pth = util.generatePath(this.path+"/"+pth);
-            if (!this.hasApp() || !this.hasPage()) return;
             this.app.dragData = this.page.hasSource() ? this.page.source.tree.lookup(pth) : null;
             this.app.dragging = true;
         });
@@ -2017,7 +1982,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                     this.type = k;
                 });
             });
-            if (!this.hasApp()) return;
             core.Menu.contextMenu = menu;
             e = util.ensure(e, "obj");
             core.Menu.placeContextMenu(e.pageX, e.pageY);
@@ -2192,7 +2156,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         let prevDType = null;
 
         this.addHandler("update", delta => {
-            const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
+            const source = this.page.source;
             const node = source ? source.tree.lookup(this.path) : null;
             if (prevNode != node) {
                 prevNode = node;
@@ -2297,7 +2261,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     get explorer() { return this.#explorer; }
 
     get type() {
-        if (!this.hasPage()) return null;
         if (!this.page.hasProject()) return null;
         const k = "browsertab:"+this.path;
         if (!this.page.project.hasProfile(k)) return null;
@@ -2307,7 +2270,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     }
     set type(v) {
         v = (v == null) ? null : String(v);
-        if (!this.hasPage()) return;
         if (!this.page.hasProject()) return;
         const k = "browsertab:"+this.path;
         if (v == null) {
@@ -2320,7 +2282,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
         this.change("type", v, this.type);
     }
     get typeData() {
-        if (!this.hasPage()) return {};
         if (!this.page.hasProject()) return {};
         const k = "browsertab:"+this.path+":data";
         if (!this.page.project.hasProfile(k)) return {};
@@ -2328,7 +2289,6 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     }
     set typeData(v) {
         v = util.ensure(v, "obj");
-        if (!this.hasPage()) return;
         if (!this.page.hasProject()) return;
         const k = "browsertab:"+this.path+":data";
         if (!this.page.project.hasProfile(k))
@@ -2416,7 +2376,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
             if (v.length <= 0) return;
             v = parseFloat(v);
             if (!this.tsOverride) {
-                if (this.hasPage() && this.page.hasSource())
+                if (this.page.hasSource())
                     this.page.source.ts = v;
             }
             else this.tsNow = v;
@@ -2429,7 +2389,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         let entries = [], tsI = null;
         this.addHandler("update", delta => {
             if (this.isClosed) return;
-            const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
+            const source = this.page.source;
             if (!this.tsOverride) this.tsNow = source ? source.ts : 0;
             let ts = new Set();
             this.vars.forEach(v => {
@@ -2509,7 +2469,6 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         v.addLinkedHandler(this, "remove", () => this.remVar(v));
         v.addLinkedHandler(this, "change", (c, f, t) => this.change("vars["+this.#vars.indexOf(v)+"]."+c, f, t));
         v.addLinkedHandler(this, "drag", () => {
-            if (!this.hasPage() || !this.page.hasSource() || !this.hasApp()) return;
             this.app.dragData = this.page.source.tree.lookup(v.path);
             this.app.dragging = true;
             v.post("remove");
@@ -2595,7 +2554,7 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
         r = this.elem.getBoundingClientRect();
         if (pos.x < r.left || pos.x > r.right) return null;
         if (pos.y < r.top || pos.y > r.bottom) return null;
-        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = this.page.hasSource() ? this.page.source.tree.lookup(data.path) : null;
         if (!(data instanceof Source.Node)) return null;
         let y = r.top, h = r.height;
         let at = 0;
@@ -3031,20 +2990,17 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             try {
                 await LOGGERCONTEXT.logsDownload([name]);
             } catch (e) {
-                if (this.hasApp())
-                    this.app.doError("Log Download Error", "LogName: "+name, e);
+                this.app.doError("Log Download Error", "LogName: "+name, e);
             }
         });
         this.addHandler("log-trigger2", (e, name) => {
             name = String(name);
             if (!LOGGERCONTEXT.hasClientLog(name)) return;
-            if (!this.hasPage()) return;
             const page = this.page;
             if (!page.hasProject()) return;
             page.project.config.sourceType = "wpilog";
             page.project.config.source = LOGGERCONTEXT.getClientPath(name);
             page.update(0);
-            if (!this.hasApp()) return;
             this.app.post("cmd-action");
         });
         let selected = new Set(), lastSelected = null, lastAction = null;
@@ -3110,7 +3066,6 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             itm.addHandler("trigger", e => {
                 this.post("log-server-delete", names);
             });
-            if (!this.hasApp()) return;
             core.Menu.contextMenu = menu;
             e = util.ensure(e, "obj");
             core.Menu.placeContextMenu(e.pageX, e.pageY);
@@ -3135,10 +3090,7 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
             if (!result) return;
             try {
                 await LOGGERCONTEXT.logsServerDelete(names);
-            } catch (e) {
-                if (this.hasApp())
-                    this.app.doError("Log Delete Error", "Names:", names.join("\n"), e);
-            }
+            } catch (e) { this.app.doError("Log Delete Error", "Names:", names.join("\n"), e); }
         });
 
         this.eLogs.addEventListener("click", e => {
@@ -3467,8 +3419,6 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
 Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
     #tab;
     #parent;
-    #page;
-    #app;
 
     #name;
     #state;    
@@ -3530,15 +3480,11 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
     get tab() { return this.#tab; }
     get parent() { return this.#parent; }
     hasParent() { return !!this.parent; }
-    get page() { return this.#page; }
-    hasPage() { return !!this.page; }
-    get app() { return this.#app; }
-    hasApp() { return !!this.app; }
     compute() {
         this.#parent = this.tab.parent;
-        this.#page = this.hasParent() ? this.parent.page : null;
-        this.#app = this.hasPage() ? this.page.app : null;
     }
+    get app() { return App.instance; }
+    get page() { return this.app.projectPage; }
 
     get name() { return this.#name; }
 
@@ -3631,7 +3577,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eConflictAffixBtnName = state.eConflictAffixBtn.children[0];
                 state.eConflictAffixBtn.addEventListener("click", e => {
                     e.stopPropagation();
-                    if (!this.hasApp()) return;
                     let itm;
                     let menu = new core.Menu();
                     Object.keys(conflictAffixMap).forEach(affix => {
@@ -3652,7 +3597,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eConflictCountBtnName = state.eConflictCountBtn.children[0];
                 state.eConflictCountBtn.addEventListener("click", e => {
                     e.stopPropagation();
-                    if (!this.hasApp()) return;
                     let itm;
                     let menu = new core.Menu();
                     Object.keys(conflictCountMap).forEach(count => {
@@ -3694,11 +3638,9 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eSubmit.textContent = "Merge";
                 state.eSubmit.addEventListener("click", async e => {
                     e.stopPropagation();
-                    if (!this.hasApp()) return;
                     const app = this.app;
                     state.eSubmit.disabled = true;
                     const progress = v => {
-                        if (this.app != app) return;
                         app.progress = v;
                     };
                     try {
@@ -3922,7 +3864,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eImportFromBtnName = state.eImportFromBtn.children[0];
                 state.eImportFromBtn.addEventListener("click", e => {
                     e.stopPropagation();
-                    if (!this.hasApp()) return;
                     let itm;
                     let menu = new core.Menu();
                     Object.keys(portMap).forEach(type => {
@@ -3948,7 +3889,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eExportToBtnName = state.eExportToBtn.children[0];
                 state.eExportToBtn.addEventListener("click", e => {
                     e.stopPropagation();
-                    if (!this.hasApp()) return;
                     let itm;
                     let menu = new core.Menu();
                     Object.keys(portMap).forEach(type => {
@@ -3992,14 +3932,12 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                 state.eSubmit.textContent = "Export";
                 state.eSubmit.addEventListener("click", async e => {
                     e.stopPropagation();
-                    if (!this.hasApp()) return;
                     const app = this.app;
-                    if (!this.hasPage()) return;
                     const page = this.page;
                     if (!validSubmit()) return;
                     if (state.exportTo == "session") {
                         if (!page.hasProject()) return;
-                        const project = this.page.project;
+                        const project = page.project;
                         project.config.sourceType = state.importFrom;
                         project.config.source = state.logs[0];
                         page.update(0);
@@ -4008,7 +3946,6 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     }
                     state.eSubmit.disabled = true;
                     const progress = v => {
-                        if (this.app != app) return;
                         app.progress = v;
                     };
                     try {
@@ -4018,7 +3955,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                         [sum, a, b] = [[], 0, 0.5];
                         const sources = 
                             ((state.importFrom == "session") ?
-                                [this.hasPage() ? { pth: null, source: this.page.source } : null] :
+                                [{ pth: null, source: this.page.source }] :
                             (await Promise.all(state.logs.map(async (pth, i) => {
                                 sum.push(0);
                                 updateSum();
@@ -4033,10 +3970,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                     await source.importFrom(pth);
                                     source.remHandler("progress", progress);
                                     data = { pth: pth, source: source };
-                                } catch (e) {
-                                    if (this.hasApp())
-                                        await this.app.doError("Source Import Error", pth, e);
-                                }
+                                } catch (e) { await this.app.doError("Source Import Error", pth, e); }
                                 sum[i] = 1;
                                 updateSum();
                                 return data;
@@ -4057,10 +3991,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                                 data = await portMap[state.exportTo].source.export(source, state.ePrefixInput.value);
                                 source.remHandler("progress", progress);
                                 data = { pth: pth, source: source, data: data };
-                            } catch (e) {
-                                if (this.hasApp())
-                                    await this.app.doError("Source Export Error", pth, e);
-                            }
+                            } catch (e) { await this.app.doError("Source Export Error", pth, e); }
                             sum[i] = 1;
                             updateSum();
                             return data;
@@ -4246,7 +4177,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                 file: "document",
             }[name];
             elem.addEventListener("click", async e => {
-                if (!this.hasApp()) return;
                 e.stopPropagation();
                 let namefs = {
                     yt: async () => {
@@ -4330,7 +4260,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                 let x = e.pageX+offset;
                 let r = this.eTimeBox.getBoundingClientRect();
                 let p = Math.min(1, Math.max(0, (x-r.left)/r.width));
-                if (!this.hasPage()) return;
                 if (!this.page.hasSource()) return;
                 const len = this.duration * 1000;
                 const playback = this.page.source.playback;
@@ -4352,7 +4281,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.eTimeNavEdit.innerHTML = "<ion-icon name='pencil'></ion-icon>";
         this.eTimeNavEdit.addEventListener("click", async e => {
             e.stopPropagation();
-            if (!this.hasApp()) return;
             let pop = this.app.prompt("Time Offset", "Shift video this many seconds", String(-this.offset/1000), "time");
             pop.type = "num";
             let result = await pop.whenResult();
@@ -4374,7 +4302,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.eTimeNavBack.innerHTML = "<ion-icon name='play-skip-back'></ion-icon>";
         this.eTimeNavBack.addEventListener("click", e => {
             e.stopPropagation();
-            if (!this.hasPage()) return;
             if (!this.page.hasSource()) return;
             const playback = this.page.source.playback;
             playback.ts = playback.tsMin - this.offset;
@@ -4385,7 +4312,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.eTimeNavAction.innerHTML = "<ion-icon></ion-icon>";
         this.eTimeNavAction.addEventListener("click", e => {
             e.stopPropagation();
-            if (!this.hasPage()) return;
             this.page.eNavActionButton.click();
         });
         const actionIcon = this.eTimeNavAction.children[0];
@@ -4395,7 +4321,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.eTimeNavForward.innerHTML = "<ion-icon name='play-skip-forward'></ion-icon>";
         this.eTimeNavForward.addEventListener("click", e => {
             e.stopPropagation();
-            if (!this.hasPage()) return;
             if (!this.page.hasSource()) return;
             const playback = this.page.source.playback;
             playback.ts = this.duration*1000 + playback.tsMin - this.offset;
@@ -4406,7 +4331,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
         this.eTimeNavZeroRight.innerHTML = "<ion-icon name='arrow-forward'></ion-icon>";
         this.eTimeNavZeroRight.addEventListener("click", e => {
             e.stopPropagation();
-            if (!this.hasPage()) return;
             if (!this.page.hasSource()) return;
             const len = this.duration * 1000;
             const playback = this.page.source.playback;
@@ -4450,7 +4374,7 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
             const len = this.duration * 1000;
             let time = 0;
             let thresh = 0.05;
-            if (this.hasPage() && this.page.hasSource()) {
+            if (this.page.hasSource()) {
                 const offset = this.offset;
                 const playback = this.page.source.playback;
                 const slen = playback.tsMax-playback.tsMin;
@@ -4521,7 +4445,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                     });
                     itm = menu.addItem(new core.Menu.Item("Rename"));
                     itm.addHandler("trigger", async e => {
-                        if (!this.hasApp()) return;
                         let result = await this.app.doPrompt("Rename", name, name);
                         if (result == null) return;
                         try {
@@ -4529,7 +4452,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
                             if (this.video == name) this.video = result;
                         } catch (e) { this.app.doError("Video Rename Error", name, e); }
                     });
-                    if (!this.hasApp()) return;
                     core.Menu.contextMenu = menu;
                     let r = eBtn.getBoundingClientRect();
                     core.Menu.placeContextMenu(r.left, r.bottom);
@@ -4569,7 +4491,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
 
     get offset() {
         if (!this.hasVideo()) return 0;
-        if (!this.hasPage()) return 0;
         if (!this.page.hasProject()) return 0;
         const k = "vidsync:"+this.video;
         if (!this.page.project.hasProfile(k)) return 0;
@@ -4578,7 +4499,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
     set offset(v) {
         if (!this.hasVideo()) return;
         v = util.ensure(v, "num");
-        if (!this.hasPage()) return;
         if (!this.page.hasProject()) return;
         const k = "vidsync:"+this.video;
         if (!this.page.project.hasProfile(k))
@@ -4589,7 +4509,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
 
     get locked() {
         if (!this.hasVideo()) return true;
-        if (!this.hasPage()) return true;
         if (!this.page.hasProject()) return true;
         const k = "vidsync:"+this.video+":lock";
         if (!this.page.project.hasProfile(k)) return false;
@@ -4597,7 +4516,6 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
     }
     set locked(v) {
         if (!this.hasVideo()) return;
-        if (!this.hasPage()) return;
         if (!this.page.hasProject()) return;
         const k = "vidsync:"+this.video+":lock";
         if (!v) {
@@ -5107,8 +5025,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         let modefs = {
                             _: side => {
                                 let input = form.addField(new core.Form.Input1d("view-time"));
-                                this.addHandler("add", () => (input.app = this.app));
-                                this.addHandler("rem", () => (input.app = null));
                                 input.types = ["ms", "s", "min"];
                                 input.baseType = "ms";
                                 input.activeType = "s";
@@ -5148,8 +5064,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                             right: () => modefs._("r"),
                             section: () => {
                                 let startInput = form.addField(new core.Form.Input1d("range-start"));
-                                this.addHandler("add", () => (startInput.app = this.app));
-                                this.addHandler("rem", () => (startInput.app = null));
                                 startInput.types = ["ms", "s", "min"];
                                 startInput.baseType = "ms";
                                 startInput.activeType = "s";
@@ -5162,8 +5076,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                                     this.change("viewParams.start", this.viewParams.start, this.viewParams.start=v);
                                 });
                                 let stopInput = form.addField(new core.Form.Input1d("range-start"));
-                                this.addHandler("add", () => (stopInput.app = this.app));
-                                this.addHandler("rem", () => (stopInput.app = null));
                                 stopInput.types = ["ms", "s", "min"];
                                 stopInput.baseType = "ms";
                                 stopInput.activeType = "s";
@@ -5185,7 +5097,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
                         let fApply = form.addField(new core.Form.Button("apply-all", "Apply To All Graphs"));
                         fApply.showHeader = false;
                         fApply.addHandler("trigger", e => {
-                            if (!this.hasPage()) return;
                             if (!this.page.hasWidget()) return;
                             const dfs = widget => {
                                 if (widget instanceof Container) return widget.children.forEach(widget => dfs(widget));
@@ -5225,7 +5136,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             mouseY = y;
         });
         this.canvas.addEventListener("mouseleave", e => {
-            if (!this.hasApp()) return;
             this.app.remHint(hints);
             mouseX = null;
             mouseY = null;
@@ -5267,13 +5177,11 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         this.addHandler("add", () => {
             document.body.addEventListener("keydown", onKeyDown);
             document.body.addEventListener("keyup", onKeyUp);
-            if (!this.hasApp()) return;
             this.app.addHint(hints.map(hint => hint.hint));
         });
         this.addHandler("rem", () => {
             document.body.removeEventListener("keydown", onKeyDown);
             document.body.removeEventListener("keyup", onKeyUp);
-            if (!this.hasApp()) return;
             this.app.remHint(hints.map(hint => hint.hint));
         });
 
@@ -5283,7 +5191,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             
             const ctx = this.ctx, quality = this.quality;
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            if (!this.hasPage() || !this.page.hasSource()) return;
+            if (!this.page.hasSource()) return;
             const source = this.page.source;
             let minTime = source.tsMin, maxTime = source.tsMax, time = source.ts;
             const graphRange = {
@@ -5611,7 +5519,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             const ranges = [];
             [
                 {
-                    value: (this.hasPage() && this.page.hasSource()) ? this.page.source.ts : 0,
+                    value: this.page.hasSource() ? this.page.source.ts : 0,
                     color: "v4",
                 },
                 {
@@ -5659,7 +5567,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
             if (
                 (mouseX != null) &&
                 (mouseDown && !mouseAlt) &&
-                (this.hasPage() && this.page.hasSource())
+                this.page.hasSource()
             ) this.page.source.ts = util.lerp(...graphRange, mouseX);
             if (mouseAlt) {
                 if (mouseX0 == null) {
@@ -5887,7 +5795,7 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
         pos = new V(pos);
         options = util.ensure(options, "obj");
         if (this.optionState == 0) return null;
-        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = this.page.hasSource() ? this.page.source.tree.lookup(data.path) : null;
         if (!(data instanceof Source.Node)) return null;
         const idfs = {
             _: side => {
@@ -5972,8 +5880,6 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
 Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     #tab;
     #parent;
-    #page;
-    #app;
 
     #path;
     #shown;
@@ -6004,8 +5910,6 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
 
         this.#tab = null;
         this.#parent = null;
-        this.#page = null;
-        this.#app = null;
 
         this.#path = "";
         this.#shown = null;
@@ -6154,15 +6058,11 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     hasTab() { return !!this.tab; }
     get parent() { return this.#parent; }
     hasParent() { return !!this.parent; }
-    get page() { return this.#page; }
-    hasPage() { return !!this.page; }
-    get app() { return this.#app; }
-    hasApp() { return !!this.app; }
     compute() {
         this.#parent = this.hasTab() ? this.tab.parent : null;
-        this.#page = this.hasParent() ? this.parent.page : null;
-        this.#app = this.hasPage() ? this.page.app : null;
     }
+    get app() { return App.instance; }
+    get page() { return this.app.projectPage; }
 
     get path() { return this.#path; }
     set path(v) {
@@ -6252,7 +6152,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
         pos = new V(pos);
         options = util.ensure(options, "obj");
         if (this.isClosed) return null;
-        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = this.page.hasSource() ? this.page.source.tree.lookup(data.path) : null;
         if (!(data instanceof Source.Node)) return null;
         if (!data.hasField()) return null;
         if (!data.field.isJustPrimitive) return null;
@@ -6377,8 +6277,6 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
                         if (!this.fTemplate.hasValue()) return;
                         this.template = this.fTemplate.value == "§null" ? null : this.fTemplate.value;
                     });
-                    this.addHandler("add", () => (this.fTemplate.app = this.app));
-                    this.addHandler("rem", () => (this.fTemplate.app = null));
                 },
                 o: () => {
                     elem.classList.add("options");
@@ -6388,7 +6286,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         });
 
         this.addHandler("update", delta => {
-            const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
+            const source = this.page.source;
             this.hooks.forEach(hook => {
                 let node = (source && hook.hasPath()) ? source.tree.lookup(hook.path) : null;
                 hook.setFrom((node && node.hasField()) ? node.field.type : "*", this.getValue(node));
@@ -6524,7 +6422,7 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
         pos = new V(pos);
         options = util.ensure(options, "obj");
         if (this.optionState == 0) return null;
-        if (data instanceof Panel.BrowserTab) data = (this.hasPage() && this.page.hasSource()) ? this.page.source.tree.lookup(data.path) : null;
+        if (data instanceof Panel.BrowserTab) data = this.page.hasSource() ? this.page.source.tree.lookup(data.path) : null;
         if (!(data instanceof Source.Node)) return null;
         if (!data.hasField()) return null;
         for (let hook of this.hooks) {
@@ -6884,8 +6782,6 @@ Panel.OdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
 Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Target {
     #tab;
     #parent;
-    #page;
-    #app;
     #pose;
 
     constructor() {
@@ -6893,8 +6789,6 @@ Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Targ
 
         this.#tab = null;
         this.#parent = null;
-        this.#page = null;
-        this.#app = null;
         this.#pose = null;
 
         this.compute();
@@ -6912,15 +6806,11 @@ Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Targ
     hasTab() { return !!this.tab; }
     get parent() { return this.#parent; }
     hasParent() { return !!this.parent; }
-    get page() { return this.#page; }
-    hasPage() { return !!this.page; }
-    get app() { return this.#app; }
-    hasApp() { return !!this.app; }
     compute() {
         this.#parent = this.hasTab() ? this.tab.parent : null;
-        this.#page = this.hasParent() ? this.parent.page : null;
-        this.#app = this.hasPage() ? this.page.app : null;
     }
+    get app() { return App.instance; }
+    get page() { return this.app.projectPage; }
     get pose() { return this.#pose; }
     set pose(v) {
         v = (v instanceof Panel.OdometryTab.Pose) ? v : null;
@@ -6970,19 +6860,15 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
 
         this.#odometry = new Odometry2d(this.eContent);
         this.addHandler("add", () => {
-            if (!this.hasApp()) return;
             this.app.addHint(this.odometry.hints);
         });
         this.addHandler("rem", () => {
-            if (!this.hasApp()) return;
             this.app.remHint(this.odometry.hints);
         });
         this.odometry.addHandler("change-addHint", (_, hint) => {
-            if (!this.hasApp()) return;
             this.app.addHint(hint);
         });
         this.odometry.addHandler("change-remHint", (hint, _) => {
-            if (!this.hasApp()) return;
             this.app.remHint(hint);
         });
         this.addHandler("change-lengthUnits", () => {
@@ -7005,8 +6891,6 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         let fieldForm = new core.Form();
         eField.appendChild(fieldForm.elem);
         this.#fSize = fieldForm.addField(new core.Form.Input2d("map-size"));
-        this.addHandler("add", () => (this.fSize.app = this.app));
-        this.addHandler("rem", () => (this.fSize.app = null));
         this.fSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
         this.fSize.baseType = "m";
         this.fSize.step = 0.1;
@@ -7023,8 +6907,6 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
         this.addHandler("change-size.x", apply);
         this.addHandler("change-size.y", apply);
         this.#fRobotSize = fieldForm.addField(new core.Form.Input2d("robot-size"));
-        this.addHandler("add", () => (this.fRobotSize.app = this.app));
-        this.addHandler("rem", () => (this.fRobotSize.app = null));
         this.fRobotSize.types = ["m", "cm", "mm", "yd", "ft", "in"];
         this.fRobotSize.baseType = "m";
         this.fRobotSize.step = 0.1;
@@ -7171,9 +7053,8 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
             this.odometry.emptySize = this.size;
 
             if (this.isClosed) return;
-            const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
+            const source = this.page.source;
             this.poses.forEach(pose => {
-                pose.fTrail.app = this.app;
                 pose.hooks.forEach(hook => {
                     let node = (source && hook.hasPath()) ? source.tree.lookup(hook.path) : null;
                     hook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
@@ -7321,7 +7202,6 @@ Panel.Odometry2dTab.Pose = class PanelOdometry2dTabPose extends Panel.OdometryTa
         this.fType.addHandler("change", () => {
             this.fType.btn = Odometry2d.Robot.getTypeName(this.fType.value);
         });
-        this.fType.addHandler("trigger", e => (this.fType.app = this.state.app));
         this.addHandler("change-type", () => (this.fType.value = this.type));
 
         this.trail = 0;
@@ -7627,19 +7507,15 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         this.#odometry = new Odometry3d(this.eContent);
         this.odometry.addHandler("change", (c, f, t) => this.change("odometry."+c, f, t));
         this.addHandler("add", () => {
-            if (!this.hasApp()) return;
             this.app.addHint(this.odometry.hints);
         });
         this.addHandler("rem", () => {
-            if (!this.hasApp()) return;
             this.app.remHint(this.odometry.hints);
         });
         this.odometry.addHandler("change-addHint", (_, hint) => {
-            if (!this.hasApp()) return;
             this.app.addHint(hint);
         });
         this.odometry.addHandler("change-remHint", (hint, _) => {
-            if (!this.hasApp()) return;
             this.app.remHint(hint);
         });
 
@@ -7781,8 +7657,6 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
         eOptions.appendChild(viewForm.elem);
 
         this.#fCameraPos = viewForm.addField(new core.Form.Input3d("camera-position"));
-        this.addHandler("add", () => (this.fCameraPos.app = this.app));
-        this.addHandler("rem", () => (this.fCameraPos.app = this.app));
         this.fCameraPos.types = ["m", "cm", "mm", "yd", "ft", "in"];
         this.fCameraPos.baseType = "m";
         this.fCameraPos.step = 0.1;
@@ -7849,7 +7723,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
                 return;
             }
             
-            const source = (this.hasPage() && this.page.hasSource()) ? this.page.source : null;
+            const source = this.page.source;
             this.poses.forEach(pose => {
                 pose.mainHooks.forEach(hook => {
                     let node = (source && hook.hasPath()) ? source.tree.lookup(hook.path) : null;
@@ -8032,7 +7906,6 @@ Panel.Odometry3dTab.Pose = class PanelOdometry3dTabPose extends Panel.OdometryTa
         this.fType.addHandler("change", () => {
             this.fType.btn = Odometry3d.Render.getTypeName(this.fType.value);
         });
-        this.fType.addHandler("trigger", e => (this.fType.app = this.state.app));
         this.addHandler("change-type", () => (this.fType.value = this.type));
 
         const componentsSubformField = form.addField(new core.Form.SubForm("components"));
@@ -8990,108 +8863,110 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
     #eContent;
     #eDivider;
     
-    constructor(app) {
-        super(app);
+    constructor() {
+        super();
 
-        this.app.eProjectInfoNameInput.addEventListener("change", e => {
-            if (this.choosing) return;
-            if (!this.hasProject()) return;
-            this.project.meta.name = this.app.eProjectInfoNameInput.value;
-        });
-        this.app.eProjectInfoSourceInput.addEventListener("change", e => {
-            this.project.config.source = this.app.eProjectInfoSourceInput.value;
-        });
-        this.app.addHandler("cmd-newtab", () => {
-            if (!this.hasActivePanel()) return;
-            const active = this.activeWidget;
-            active.addTab(new Panel.AddTab(), active.tabIndex+1);
-        });
-        this.app.addHandler("cmd-nexttab", () => {
-            if (!this.hasActivePanel()) return;
-            const active = this.activeWidget;
-            active.tabIndex++;
-        });
-        this.app.addHandler("cmd-prevtab", () => {
-            if (!this.hasActivePanel()) return;
-            const active = this.activeWidget;
-            active.tabIndex--;
-        });
-        this.app.addHandler("cmd-closetab", () => {
-            if (!this.hasActivePanel()) return;
-            const active = this.activeWidget;
-            active.remTab(active.tabs[active.tabIndex]);
-        });
-        this.app.addHandler("cmd-openclose", () => {
-            if (!this.hasActivePanel()) return;
-            const active = this.activeWidget;
-            if (!active.tabs[active.tabIndex]) return;
-            active.tabs[active.tabIndex].post("openclose");
-        });
-        this.app.addHandler("cmd-expandcollapse", () => {
-            if (!this.hasActivePanel()) return;
-            const active = this.activeWidget;
-            active.isTitleCollapsed = !active.isTitleCollapsed;
-        });
-        this.app.addHandler("cmd-minmax", () => {
-            if (!this.hasActivePanel()) return;
-            const active = this.activeWidget;
-            active.isMaximized = !active.isMaximized;
-        });
-        this.app.addHandler("cmd-resetdivider", () => {
-            if (!this.hasProject()) return;
-            this.project.sidePos = null;
-        });
-        this.app.addHandler("cmd-toggleside", () => {
-            if (!this.hasProject()) return;
-            this.project.isCollapsed = !this.project.isCollapsed;
-        });
-        this.app.addHandler("cmd-source-type", type => {
-            if (!this.hasProject()) return;
-            type = String(type);
-            if (!["nt", "wpilog", "csv-time", "csv-field", "ds"].includes(type)) return;
-            this.project.config.sourceType = type;
-            this.update(0);
-            this.app.post("cmd-action");
-        });
-        this.app.addHandler("cmd-action", () => {
-            if (!this.hasProject() || !this.hasSource()) return;
-            if (this.source instanceof NTSource) {
-                if (this.source.disconnected)
-                    this.source.connect();
-                else this.source.disconnect();
-                return;
-            }
-            if (this.source instanceof HistoricalSource) {
-                if (this.source.importing) return;
-                if (this.project.config.source == null) return;
-                (async () => {
-                    const source = this.source;
-                    this.app.progress = 0;
-                    try {
-                        let file = this.project.config.source;
-                        let i1 = file.lastIndexOf("/");
-                        let i2 = file.lastIndexOf("\\");
-                        let i = Math.max(i1, i2);
-                        source.file = file;
-                        source.shortFile = file.slice(i+1);
-                        const progress = v => {
-                            if (this.source != source) return this.app.progress = null;
-                            this.app.progress = v;
-                        };
-                        source.addHandler("progress", progress);
-                        const t0 = util.getTime();
-                        await source.importFrom(file);
-                        const t1 = util.getTime();
-                        console.log(t1-t0);
-                        source.remHandler("progress", progress);
-                        this.app.progress = 1;
-                    } catch (e) {
-                        this.app.doError(source.constructor.getName()+" Load Error", this.project.config.source, e);
-                    }
-                    this.app.progress = null;
-                })();
-                return;
-            }
+        this.addHandler("add", () => {
+            this.app.eProjectInfoNameInput.addEventListener("change", e => {
+                if (this.choosing) return;
+                if (!this.hasProject()) return;
+                this.project.meta.name = this.app.eProjectInfoNameInput.value;
+            });
+            this.app.eProjectInfoSourceInput.addEventListener("change", e => {
+                this.project.config.source = this.app.eProjectInfoSourceInput.value;
+            });
+            this.app.addHandler("cmd-newtab", () => {
+                if (!this.hasActivePanel()) return;
+                const active = this.activeWidget;
+                active.addTab(new Panel.AddTab(), active.tabIndex+1);
+            });
+            this.app.addHandler("cmd-nexttab", () => {
+                if (!this.hasActivePanel()) return;
+                const active = this.activeWidget;
+                active.tabIndex++;
+            });
+            this.app.addHandler("cmd-prevtab", () => {
+                if (!this.hasActivePanel()) return;
+                const active = this.activeWidget;
+                active.tabIndex--;
+            });
+            this.app.addHandler("cmd-closetab", () => {
+                if (!this.hasActivePanel()) return;
+                const active = this.activeWidget;
+                active.remTab(active.tabs[active.tabIndex]);
+            });
+            this.app.addHandler("cmd-openclose", () => {
+                if (!this.hasActivePanel()) return;
+                const active = this.activeWidget;
+                if (!active.tabs[active.tabIndex]) return;
+                active.tabs[active.tabIndex].post("openclose");
+            });
+            this.app.addHandler("cmd-expandcollapse", () => {
+                if (!this.hasActivePanel()) return;
+                const active = this.activeWidget;
+                active.isTitleCollapsed = !active.isTitleCollapsed;
+            });
+            this.app.addHandler("cmd-minmax", () => {
+                if (!this.hasActivePanel()) return;
+                const active = this.activeWidget;
+                active.isMaximized = !active.isMaximized;
+            });
+            this.app.addHandler("cmd-resetdivider", () => {
+                if (!this.hasProject()) return;
+                this.project.sidePos = null;
+            });
+            this.app.addHandler("cmd-toggleside", () => {
+                if (!this.hasProject()) return;
+                this.project.isCollapsed = !this.project.isCollapsed;
+            });
+            this.app.addHandler("cmd-source-type", type => {
+                if (!this.hasProject()) return;
+                type = String(type);
+                if (!["nt", "wpilog", "csv-time", "csv-field", "ds"].includes(type)) return;
+                this.project.config.sourceType = type;
+                this.update(0);
+                this.app.post("cmd-action");
+            });
+            this.app.addHandler("cmd-action", () => {
+                if (!this.hasProject() || !this.hasSource()) return;
+                if (this.source instanceof NTSource) {
+                    if (this.source.disconnected)
+                        this.source.connect();
+                    else this.source.disconnect();
+                    return;
+                }
+                if (this.source instanceof HistoricalSource) {
+                    if (this.source.importing) return;
+                    if (this.project.config.source == null) return;
+                    (async () => {
+                        const source = this.source;
+                        this.app.progress = 0;
+                        try {
+                            let file = this.project.config.source;
+                            let i1 = file.lastIndexOf("/");
+                            let i2 = file.lastIndexOf("\\");
+                            let i = Math.max(i1, i2);
+                            source.file = file;
+                            source.shortFile = file.slice(i+1);
+                            const progress = v => {
+                                if (this.source != source) return this.app.progress = null;
+                                this.app.progress = v;
+                            };
+                            source.addHandler("progress", progress);
+                            const t0 = util.getTime();
+                            await source.importFrom(file);
+                            const t1 = util.getTime();
+                            console.log(t1-t0);
+                            source.remHandler("progress", progress);
+                            this.app.progress = 1;
+                        } catch (e) {
+                            this.app.doError(source.constructor.getName()+" Load Error", this.project.config.source, e);
+                        }
+                        this.app.progress = null;
+                    })();
+                    return;
+                }
+            });
         });
 
         this.eNavProgress.addEventListener("mousedown", e => {
@@ -9224,9 +9099,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         });
         this.explorer.addHandler("drag", (e, pth) => {
             pth = util.generatePath(pth);
-            let node = this.hasSource() ? this.source.tree.lookup(pth) : null;
-            if (!node) return;
-            this.app.dragData = node;
+            this.app.dragData = this.hasSource() ? this.source.tree.lookup(pth) : null;
             this.app.dragging = true;
         });
         this.#metaExplorer = new core.Explorer();
@@ -9346,7 +9219,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         
         let toolButtons = Panel.getTools();
         this.addToolButton(toolButtons.map(data => {
-            let btn = new ToolButton(this.app, data.class);
+            let btn = new ToolButton(data.class);
             btn.elem.disabled = !!data.disabled;
             return btn;
         }));
@@ -9483,7 +9356,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         const len = util.ensure(tab.duration, "num") * 1000;
                         const buffered = tab.eVideo.buffered;
                         while (this.sections.length < n+buffered.length+1)
-                            this.addSection(new app.AppFeature.ProjectPage.Section(0, 0, 0));
+                            this.addSection(new App.ProjectPage.Section(0, 0, 0));
                         for (let i = 0; i < buffered.length+1; i++) {
                             let sect = this.sections[n+i];
                             if (i <= 0) {
@@ -9697,13 +9570,11 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (this.widget == v) return;
         if (this.hasWidget()) {
             this.widget.onRem();
-            this.widget.parent = null;
             this.widget.clearLinkedHandlers(this, "change");
             this.eContent.removeChild(this.widget.elem);
         }
         this.#widget = v;
         if (this.hasWidget()) {
-            this.widget.parent = this;
             const onChange = () => {
                 if (this.hasProject())
                     this.project.widgetData = JSON.stringify(this.widget);
@@ -9738,32 +9609,33 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (this.source instanceof NTSource) this.source.address = null;
         }
         this.#source = v;
+        const app = this.app;
         if (!this.hasSource()) {
-            this.app.eProjectInfoNameInput.placeholder = "No source";
-            this.app.eProjectInfoActionBtn.disabled = true;
-            this.app.eProjectInfoActionBtn.classList.remove("on");
-            this.app.eProjectInfoActionBtn.classList.remove("off");
-            this.app.eProjectInfoActionBtn.classList.remove("special");
-            this.app.eProjectInfoActionBtn.textContent = "No source";
+            app.eProjectInfoNameInput.placeholder = "No source";
+            app.eProjectInfoActionBtn.disabled = true;
+            app.eProjectInfoActionBtn.classList.remove("on");
+            app.eProjectInfoActionBtn.classList.remove("off");
+            app.eProjectInfoActionBtn.classList.remove("special");
+            app.eProjectInfoActionBtn.textContent = "No source";
         } else if (this.source instanceof NTSource) {
-            this.app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
-            this.app.eProjectInfoActionBtn.disabled = false;
-            this.app.eProjectInfoActionBtn.classList.remove("special");
+            app.eProjectInfoSourceInput.placeholder = "Provide an IP...";
+            app.eProjectInfoActionBtn.disabled = false;
+            app.eProjectInfoActionBtn.classList.remove("special");
         } else if (this.source instanceof HistoricalSource) {
-            this.app.eProjectInfoSourceInput.placeholder = "Path...";
-            this.app.eProjectInfoActionBtn.classList.remove("on");
-            this.app.eProjectInfoActionBtn.classList.remove("off");
-            this.app.eProjectInfoActionBtn.classList.add("special");
-            this.app.eProjectInfoActionBtn.textContent = "Import";
+            app.eProjectInfoSourceInput.placeholder = "Path...";
+            app.eProjectInfoActionBtn.classList.remove("on");
+            app.eProjectInfoActionBtn.classList.remove("off");
+            app.eProjectInfoActionBtn.classList.add("special");
+            app.eProjectInfoActionBtn.textContent = "Import";
         } else {
-            this.app.eProjectInfoNameInput.placeholder = "Unknown source: "+this.source.constructor.getName();
-            this.app.eProjectInfoActionBtn.disabled = true;
-            this.app.eProjectInfoActionBtn.classList.remove("on");
-            this.app.eProjectInfoActionBtn.classList.remove("off");
-            this.app.eProjectInfoActionBtn.classList.remove("special");
-            this.app.eProjectInfoActionBtn.textContent = "Unknown source: "+this.source.constructor.getName();
+            app.eProjectInfoNameInput.placeholder = "Unknown source: "+this.source.constructor.getName();
+            app.eProjectInfoActionBtn.disabled = true;
+            app.eProjectInfoActionBtn.classList.remove("on");
+            app.eProjectInfoActionBtn.classList.remove("off");
+            app.eProjectInfoActionBtn.classList.remove("special");
+            app.eProjectInfoActionBtn.textContent = "Unknown source: "+this.source.constructor.getName();
         }
-        let itm = this.app.menu.getItemById("action");
+        let itm = app.menu.getItemById("action");
         if (!itm) return;
         if (!this.hasSource()) {
             itm.enabled = false;
