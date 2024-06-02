@@ -1477,7 +1477,7 @@ App.ProjectPage.Panel = class AppProjectPagePanel extends util.Target {
 
     get name() { return this.#name; }
 
-    get app() { return App.instance; }
+    get app() { return app.App.instance; }
     get page() { return this.app.projectPage; }
 
     get items() { return [...this.#items]; }
@@ -2480,7 +2480,7 @@ App.ProjectPage.PathsPanel.Button = class AppProjectPagePathsPanelButton extends
     }
 
     get panel() { return this.#panel; }
-    get app() { return App.instance; }
+    get app() { return app.App.instance; }
     get page() { return this.app.projectPage; }
 
     get path() { return this.#path; }

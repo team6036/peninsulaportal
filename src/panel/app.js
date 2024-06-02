@@ -265,7 +265,7 @@ class ToolButton extends util.Target {
         });
     }
 
-    get app() { return App.instance; }
+    get app() { return app.App.instance; }
     get page() { return this.app.projectPage; }
     
     get tabClass() { return this.#tabClass; }
@@ -512,7 +512,7 @@ class Widget extends util.Target {
         this.#parent = v;
     }
     hasParent() { return !!this.parent; }
-    get app() { return App.instance; }
+    get app() { return app.App.instance; }
     get page() { return this.app.projectPage; }
 
     contains(v) { return v == this; }
@@ -1140,7 +1140,7 @@ Panel.Tab = class PanelTab extends util.Target {
         this.#parent = v;
     }
     hasParent() { return !!this.parent; }
-    get app() { return App.instance; }
+    get app() { return app.App.instance; }
     get page() { return this.app.projectPage; }
 
     get elem() { return this.#elem; }
@@ -3483,7 +3483,7 @@ Panel.LogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
     compute() {
         this.#parent = this.tab.parent;
     }
-    get app() { return App.instance; }
+    get app() { return app.App.instance; }
     get page() { return this.app.projectPage; }
 
     get name() { return this.#name; }
@@ -6061,7 +6061,7 @@ Panel.GraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     compute() {
         this.#parent = this.hasTab() ? this.tab.parent : null;
     }
-    get app() { return App.instance; }
+    get app() { return app.App.instance; }
     get page() { return this.app.projectPage; }
 
     get path() { return this.#path; }
@@ -6809,7 +6809,7 @@ Panel.OdometryTab.Pose.State = class PanelOdometryTabPoseState extends util.Targ
     compute() {
         this.#parent = this.hasTab() ? this.tab.parent : null;
     }
-    get app() { return App.instance; }
+    get app() { return app.App.instance; }
     get page() { return this.app.projectPage; }
     get pose() { return this.#pose; }
     set pose(v) {
