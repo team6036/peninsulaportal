@@ -20,26 +20,6 @@ import DSSource from "../sources/ds/source.js";
 import { WorkerClient } from "../worker.js";
 
 
-
-function generatePositioning(value, lengthUnits, angleUnits, z2d=0) {
-    value = util.ensure(value, "arr").map(v => util.ensure(v, "num"));
-    if (value.length == 7)
-        return {
-            pos: value.slice(0, 3).map(v => lib.Unit.convert(v, lengthUnits, "m")),
-            q: value.slice(3, 7),
-        };
-    if (value.length == 3)
-        return {
-            pos: [...value.slice(0, 2).map(v => lib.Unit.convert(v, lengthUnits, "m")), util.ensure(z2d, "num")],
-            q: (d => [Math.cos(d/2), 0, 0, Math.sin(d/2)])(lib.Unit.convert(value[2], angleUnits, "rad")),
-        };
-    return {
-        pos: [0, 0, 0],
-        q: [0, 0, 0, 0],
-    };
-}
-
-
 class RLine extends Odometry2d.Render {
     #waypoints;
     #color;
@@ -123,113 +103,9 @@ class RLine extends Odometry2d.Render {
     set size(v) { this.#size = Math.max(0, util.ensure(v, "num")); }
 }
 
-
-function getDisplay(t, v) {
-    t = (t == null) ? null : String(t);
-    if (t == null || t.length <= 0) return {
-        name: v ? "folder" : "folder-outline",
-        color: "",
-    };
-    if (t.endsWith("[]")) {
-        t = t.slice(0, -2);
-        let display = getDisplay(t, (t == "boolean") ? true : null);
-        if (display == null) return null;
-        return {
-            src: "./assets/icons/array.svg",
-            color: display.color,
-        };
-    }
-    if (t.startsWith("struct:")) return {
-        name: "cube-outline",
-    };
-    if (!Source.Field.TYPES.includes(t)) return {
-        name: "document-outline",
-        color: "var(--cr)",
-    };
-    if (["double", "float", "int"].includes(t)) return {
-        src: "./assets/icons/number.svg",
-        color: "var(--cb)",
-    };
-    if (t == "boolean") return {
-        name: v ? "checkmark-circle" : "close-circle",
-        color: v ? "var(--cg)" : "var(--cr)",
-    };
-    if (t == "string") return {
-        name: "text",
-        color: "var(--cy)",
-    };
-    if (t == "structschema") return {
-        name: "map-outline",
-    };
-    if (t == "json") return {
-        src: "./assets/icons/object.svg",
-        color: "var(--co)",
-    };
-    return {
-        src: "./assets/icons/variable.svg",
-    };
-}
-
-function getRepresentation(o, alt=false) {
-    if (
-        util.is(o, "num") ||
-        util.is(o, "bool") ||
-        util.is(o, "str")
-    ) return (alt && util.is(o, "str")) ? `"${o}"` : String(o);
-    if (o instanceof Uint8Array) return alt ? util.TEXTDECODER.decode(o) : [...o].map(x => x.toString(16).padStart(2, "0")).join("");
-    if (util.is(o, "arr")) return (alt ? "" : "[")+[...o].map(o => getRepresentation(o)).join(", ")+(alt ? "" : "]");
-    if (util.is(o, "obj")) return JSON.stringify(o);
-    return String(o);
-}
-
-function getTabDisplay(name) {
-    name = String(name);
-    if (name == "graph") return {
-        name: "analytics",
-        color: "var(--cb)",
-    };
-    if (name == "table") return {
-        src: "./assets/icons/table.svg",
-        color: "var(--cb)",
-    };
-    if (name.startsWith("odometry")) return {
-        name: "locate",
-        color: "var(--cy)",
-    };
-    if (name == "webview") return {
-        name: "globe-outline",
-        color: "var(--cc)",
-    };
-    if (name == "videosync") return {
-        name: "play-outline",
-        color: "var(--cc)",
-    };
-    if (name == "logger" || name == "logworks") return {
-        name: "list",
-        color: "var(--cc)",
-    };
-    if (name == "scout") return {
-        name: "search-outline",
-        color: "var(--cc)",
-    };
-}
-
-function stringify(data) {
-    const dfs = (data, indent=0) => {
-        const space = new Array(indent).fill("  ").join("");
-        indent++;
-        if (util.is(data, "obj"))
-            return "\n"+Object.keys(data).map(k => space+k+": "+dfs(data[k], indent)).join("\n");
-        if (util.is(data, "arr"))
-            return "\n"+data.map((v, i) => space+i+": "+dfs(v, indent)).join("\n");
-        return String(data);
-    };
-    return dfs(data).trim();
-}
-
 class FieldExplorer extends core.Explorer {
     static SORT = true;
-};
+}
 FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
     #canShowValue;
 
@@ -240,7 +116,7 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
             util.ensure(nodeArr, "arr").filter(node => (node instanceof Source.Node)).map(node => {
                 node.info = node.hasField() ? node.field.type : null;
                 node.value = node.hasField() ? node.field.get() : null;
-                node.tooltip = node.hasField() ? stringify(node.field.getMeta()) : null;
+                node.tooltip = node.hasField() ? lib.stringify(node.field.getMeta()) : null;
                 return node;
             }),
             enodeArr,
@@ -292,7 +168,7 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
     updateDisplay() {
         this.icon = null;
         this.iconSrc = null;
-        let display = getDisplay(this.type, this.value);
+        let display = Source.Field.getDisplay(this.type, this.value);
         if (display != null) {
             if ("src" in display) this.iconSrc = display.src;
             else this.icon = display.name;
@@ -302,17 +178,28 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
             this.icon = "";
             this.eIcon.style.color = this.eValue.style.color = "";
         }
-        if (this.showValue) this.eValue.textContent = getRepresentation(this.value, this.type == "structschema");
+        if (this.showValue) this.eValue.textContent = Source.Field.getRepresentation(this.value, this.type == "structschema");
     }
 };
 
 class ToolButton extends util.Target {
+    #app;
+
+    #tabClass;
+
     #elem;
     #eIcon;
     #eName;
 
-    constructor(dname, name) {
+    constructor(app, tabClass) {
         super();
+
+        if (!(app instanceof App)) throw new Error("App is not instance of class App");
+        this.#app = app;
+
+        if (!util.is(tabClass, "func")) throw new Error("Tab Class is not a constructor");
+        if (!(tabClass.prototype instanceof Panel.Tab)) throw new Error("Tab Class is not of child class Tab");
+        this.#tabClass = tabClass;
 
         this.#elem = document.createElement("button");
         this.elem.classList.add("item");
@@ -348,16 +235,44 @@ class ToolButton extends util.Target {
             document.body.addEventListener("mousemove", mousemove);
         });
 
-        this.name = dname;
+        this.name = this.tabClass.NICKNAME;
 
-        let display = getTabDisplay(name);
-        if (display != null) {
-            if ("src" in display) this.iconSrc = display.src;
-            else this.icon = display.name;
-            if ("color" in display) this.iconColor = display.color;
-            else this.iconColor = "";
-        }
+        if (this.tabClass.ICONSRC) this.iconSrc = this.tabClass.ICONSRC;
+        else this.icon = this.tabClass.ICON;
+        if (this.tabClass.ICONCOLOR) this.iconColor = this.tabClass.ICONCOLOR;
+        else this.iconColor = "";
+
+        this.addHandler("trigger", () => {
+            if (this.elem.disabled) return;
+            if (!this.app.hasActivePanel()) return;
+            const active = this.app.activeWidget;
+            active.addTab(new this.tabClass(), active.tabIndex+1);
+        });
+        this.addHandler("contextmenu", e => {
+            if (this.elem.disabled) return;
+            let itm;
+            let menu = new core.Menu();
+            itm = menu.addItem(new core.Menu.Item("Open"));
+            itm.addHandler("trigger", e => {
+                this.post("trigger", e);
+            });
+            itm = menu.addItem(new core.Menu.Item("Start Dragging"));
+            itm.addHandler("trigger", e => {
+                this.post("drag", e);
+            });
+            core.Menu.contextMenu = menu;
+            core.Menu.placeContextMenu(e.pageX, e.pageY);
+        });
+        this.addHandler("drag", () => {
+            if (this.elem.disabled) return;
+            this.app.dragData = new this.tabClass();
+            this.app.dragging = true;
+        });
     }
+
+    get app() { return this.#app; }
+    
+    get tabClass() { return this.#tabClass; }
 
     get elem() { return this.#elem; }
     get eIcon() { return this.#eIcon; }
@@ -913,52 +828,15 @@ class Panel extends Widget {
 
     static getTools() {
         return [
-            {
-                id: "graph",
-                name: "Graph", nickname: "Graph",
-                tab: Panel.GraphTab,
-            },
-            {
-                id: "table",
-                name: "Table", nickname: "Table",
-                tab: Panel.TableTab,
-            },
-            {
-                id: "odometry2d",
-                name: "Odometry2d", nickname: "Odom2d",
-                tab: Panel.Odometry2dTab,
-            },
-            {
-                id: "odometry3d",
-                name: "Odometry3d", nickname: "Odom3d",
-                tab: Panel.Odometry3dTab,
-            },
-            {
-                id: "scout",
-                name: "Scout", nickname: "Scout",
-                tab: Panel.ScoutTab,
-            },
-            {
-                id: "videosync",
-                name: "VideoSync", nickname: "VidSync",
-                tab: Panel.VideoSyncTab,
-            },
-            {
-                id: "logger",
-                name: "Logger", nickname: "Logger",
-                tab: Panel.LoggerTab,
-                disabled: window.agent().public,
-            },
-            {
-                id: "logworks",
-                name: "LogWorks", nickname: "LogWorks",
-                tab: Panel.LogWorksTab,
-            },
-            {
-                id: "webview",
-                name: "WebView", nickname: "WebView",
-                tab: Panel.WebViewTab,
-            },
+            { class: Panel.GraphTab },
+            { class: Panel.TableTab },
+            { class: Panel.Odometry2dTab },
+            { class: Panel.Odometry3dTab },
+            { class: Panel.ScoutTab },
+            { class: Panel.VideoSyncTab },
+            { class: Panel.LoggerTab, disabled: window.agent().public },
+            { class: Panel.LogWorksTab },
+            { class: Panel.WebViewTab },
         ];
     }
 
@@ -1186,6 +1064,12 @@ Panel.Tab = class PanelTab extends util.Target {
     #eTabName;
     #eTabClose;
 
+    static NAME = "Tab";
+    static NICKNAME = "Tab";
+    static ICON = "bookmark";
+    static ICONSRC = null;
+    static ICONCOLOR = "";
+
     constructor(a) {
         super();
 
@@ -1265,6 +1149,12 @@ Panel.Tab = class PanelTab extends util.Target {
         }).observe(this.elem, { attributes: true, attributeFilter: ["class"] });
 
         this.parent = null;
+
+        this.name = this.constructor.NAME;
+        if (this.constructor.ICONSRC) this.iconSrc = this.constructor.ICONSRC;
+        else if (this.constructor.ICON) this.icon = this.constructor.ICON;
+        else this.hasIcon = false;
+        if (this.constructor.ICONCOLOR) this.iconColor = this.constructor.ICONCOLOR;
     }
 
     get parent() { return this.#parent; }
@@ -1355,13 +1245,15 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
     #eSearchClear;
     #eContent;
 
+    static NAME = "New Tab";
+    static NICKNAME = "New";
+    static ICON = null;
+    static ICONSRC = null;
+
     constructor(a) {
         super(a);
 
         this.elem.classList.add("add");
-
-        this.name = "New Tab";
-        this.hasIcon = false;
 
         this.#searchPart = "";
         this.#tags = [];
@@ -1424,23 +1316,19 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
         this.clearItems();
         let toolItems = Panel.getTools();
         toolItems = toolItems.map(data => {
-            let display = getTabDisplay(data.id);
-            let itm = new Panel.AddTab.Button(data.name, "", "");
+            let itm = new Panel.AddTab.Button(data.class.NAME, "", "");
             let btn = itm;
             itm.btn.disabled = !!data.disabled;
-            if (display != null) {
-                if ("src" in display) itm.iconSrc = display.src;
-                else itm.icon = display.name;
-                if ("color" in display) itm.iconColor = display.color;
-                else itm.iconColor = "";
-            }
+            if (data.class.ICONSRC) itm.iconSrc = data.class.ICONSRC;
+            else if (data.class.ICON) itm.icon = data.class.ICON;
+            if (data.class.ICONCOLOR) itm.iconColor = data.class.ICONCOLOR;
             return {
                 item: itm,
                 trigger: () => {
                     if (!this.hasParent()) return;
                     if (!!data.disabled) return;
                     let index = this.parent.tabs.indexOf(this);
-                    this.parent.addTab(new data.tab(), index);
+                    this.parent.addTab(new data.class(), index);
                     this.parent.remTab(this);
                 },
                 contextmenu: e => {
@@ -1460,7 +1348,7 @@ Panel.AddTab = class PanelAddTab extends Panel.Tab {
                 drag: () => {
                     if (!this.hasApp()) return;
                     if (!!data.disabled) return;
-                    this.app.dragData = new data.tab();
+                    this.app.dragData = new data.class();
                     this.app.dragging = true;
                 },
             };
@@ -2005,7 +1893,7 @@ Panel.AddTab.NodeButton = class PanelAddTabNodeButton extends Panel.AddTab.Butto
 
         this.addHandler("update", delta => {
             if (!this.hasNode()) return;
-            let display = getDisplay(this.node.hasField() ? this.node.field.type : null, this.node.hasField() ? this.node.field.get() : null);
+            let display = Source.Field.getDisplay(this.node);
             if (display != null) {
                 if ("src" in display) this.iconSrc = display.src;
                 else this.icon = display.name;
@@ -2037,6 +1925,11 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     #eShowToggle;
     #eDisplay;
     #eDisplayChange;
+
+    static NAME = "Browser";
+    static NICKNAME = "Browser";
+    static ICON = null;
+    static ICONSRC = null;
 
     constructor(a) {
         super(a);
@@ -2140,7 +2033,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
                 eValue.classList.add("value");
                 return {
                     update: (node, value, display, typeData) => {
-                        value = getRepresentation(value, node.field.type == "structschema");
+                        value = Source.Field.getRepresentation(value, node.field.type == "structschema");
                         eType.textContent = node.field.type;
                         eValue.style.color = (display == null) ? "" : util.ensure(display.color, "str");
                         eValue.style.fontSize = ((value.length < 25) ? 32 : 16)+"px";
@@ -2325,7 +2218,7 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
             }
             if (!node) return;
             let value = (node && node.hasField()) ? node.field.get() : null;
-            let display = getDisplay((node && node.hasField()) ? node.field.type : null, value);
+            let display = Source.Field.getDisplay(node);
             if (display != null) {
                 if ("src" in display) this.iconSrc = display.src;
                 else this.icon = display.name;
@@ -2457,20 +2350,16 @@ Panel.BrowserTab = class PanelBrowserTab extends Panel.Tab {
     }
 };
 Panel.ToolTab = class PanelToolTab extends Panel.Tab {
-    constructor(a, dname, name) {
+    static NAME = "Tool";
+    static NICKNAME = "Tool";
+    static ICON = "build";
+    static ICONSRC = null;
+    static ICONCOLOR = "var(--cp)";
+
+    constructor(a) {
         super();
 
         this.elem.classList.add("tool");
-
-        this.name = dname;
-        
-        let display = getTabDisplay(name);
-        if (display != null) {
-            if ("src" in display) this.iconSrc = display.src;
-            else this.icon = display.name;
-            if ("color" in display) this.iconColor = display.color;
-            else this.iconColor = "";
-        }
     }
 };
 Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
@@ -2485,12 +2374,18 @@ Panel.TableTab = class PanelTableTab extends Panel.ToolTab {
     #eTSInput;
     #eFollowBtn;
 
+    static NAME = "Table";
+    static NICKNAME = "Table";
+    static ICON = null;
+    static ICONSRC = "./assets/icons/table.svg";
+    static ICONCOLOR = "var(--cb)";
+
     static TW = 250;
     static TW2 = 150;
     static TH = 30;
 
     constructor(a) {
-        super(a, "Table", "table");
+        super(a);
 
         this.elem.classList.add("table");
 
@@ -2939,8 +2834,14 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
     #eSrcInput;
     #eWebView;
 
+    static NAME = "WebView";
+    static NICKNAME = "WebView";
+    static ICON = "globe-outline";
+    static ICONSRC = null;
+    static ICONCOLOR = "var(--cc)";
+
     constructor(a) {
-        super(a, "WebView", "webview");
+        super(a);
 
         this.elem.classList.add("webview");
 
@@ -3035,8 +2936,14 @@ Panel.WebViewTab = class PanelWebViewTab extends Panel.ToolTab {
 Panel.ScoutTab = class PanelScoutTab extends Panel.ToolTab {
     #eWebView;
 
+    static NAME = "Scout";
+    static NICKNAME = "Scout";
+    static ICON = "search-outline";
+    static ICONSRC = null;
+    static ICONCOLOR = "var(--cc)";
+
     constructor(a) {
-        super(a, "Scout", "scout");
+        super(a);
 
         this.elem.classList.add("scout");
 
@@ -3058,8 +2965,14 @@ Panel.LoggerTab = class PanelLoggerTab extends Panel.ToolTab {
     #eUploadBtn;
     #eLogs;
 
+    static NAME = "Logger";
+    static NICKNAME = "Logger";
+    static ICON = "list";
+    static ICONSRC = null;
+    static ICONCOLOR = "var(--cc)";
+
     constructor(a) {
-        super(a, "Logger", "logger");
+        super(a);
 
         this.elem.classList.add("logger");
 
@@ -3451,8 +3364,14 @@ Panel.LogWorksTab = class PanelLogWorksTab extends Panel.ToolTab {
 
     #eActions;
 
+    static NAME = "LogWorks";
+    static NICKNAME = "LogWorks";
+    static ICON = "list";
+    static ICONSRC = null;
+    static ICONCOLOR = "var(--cc)";
+
     constructor(a) {
-        super(a, "LogWorks", "logworks");
+        super(a);
 
         this.elem.classList.add("logworks");
 
@@ -4279,8 +4198,14 @@ Panel.VideoSyncTab = class PanelVideoSyncTab extends Panel.ToolTab {
     #eTimeNavEdit;
     #eTimeNavLock;
 
+    static NAME = "VideoSync";
+    static NICKNAME = "VidSync";
+    static ICON = "play-outline";
+    static ICONSRC = null;
+    static ICONCOLOR = "var(--cc)";
+
     constructor(a) {
-        super(a, "VideoSync", "videosync");
+        super(a);
 
         this.elem.classList.add("videosync");
 
@@ -4727,10 +4652,13 @@ Panel.ToolCanvasTab = class PanelToolCanvasTab extends Panel.ToolTab {
     #eContent;
     #canvas; #ctx;
 
+    static NAME = "ToolCanvas";
+    static NICKNAME = "ToolCanv";
+
     static CREATECTX = true;
 
-    constructor(a, dname, name) {
-        super(a, dname, name);
+    constructor(a) {
+        super(a);
 
         this.elem.classList.add("canvas");
 
@@ -4936,7 +4864,7 @@ Panel.ToolCanvasTab.Hook = class PanelToolCanvasTabHook extends util.Target {
         this.#value = v;
         if (!this.eIcon) return;
         const icon = this.eIcon;
-        let display = getDisplay(t, v);
+        let display = Source.Field.getDisplay(t, v);
         if (display != null) {
             if ("src" in display) icon.setAttribute("src", display.src);
             else icon.name = display.name;
@@ -5092,8 +5020,14 @@ Panel.GraphTab = class PanelGraphTab extends Panel.ToolCanvasTab {
     #viewMode;
     #viewParams;
 
+    static NAME = "Graph";
+    static NICKNAME = "Graph";
+    static ICON = "analytics";
+    static ICONSRC = null;
+    static ICONCOLOR = "var(--cb)";
+
     constructor(a) {
-        super(a, "Graph", "graph");
+        super(a);
 
         this.elem.classList.add("graph");
 
@@ -6392,10 +6326,16 @@ Panel.OdometryTab = class PanelOdometryTab extends Panel.ToolCanvasTab {
 
     #fTemplate;
 
+    static NAME = "Odometry";
+    static NICKNAME = "Odom";
+    static ICON = "locate";
+    static ICONSRC = null;
+    static ICONCOLOR = "var(--cy)";
+
     static PATTERNS = {};
 
-    constructor(a, tail="") {
-        super(a, "Odometry"+tail, "odometry"+String(tail).toLowerCase());
+    constructor(a) {
+        super(a);
 
         this.elem.classList.add("odometry");
 
@@ -7014,6 +6954,9 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     #fOriginBlue;
     #fOriginRed;
 
+    static NAME = "Odometry2d";
+    static NICKNAME = "Odom2d";
+
     static PATTERNS = {
         "Pose2d": [
             ["translation", "x"],
@@ -7023,7 +6966,7 @@ Panel.Odometry2dTab = class PanelOdometry2dTab extends Panel.OdometryTab {
     };
 
     constructor(a) {
-        super(a, "2d");
+        super(a);
 
         this.#odometry = new Odometry2d(this.eContent);
         this.addHandler("add", () => {
@@ -7647,6 +7590,9 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
     #cameraHook;
 
+    static NAME = "Odometry3d";
+    static NICKNAME = "Odom3d";
+
     static CREATECTX = false;
 
     static PATTERNS = {
@@ -7667,7 +7613,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
     };
 
     constructor(a) {
-        super(a, "3d");
+        super(a);
 
         this.addHandler("rem", () => {
             this.odometry.renderer.forceContextLoss();
@@ -7921,7 +7867,7 @@ Panel.Odometry3dTab = class PanelOdometry3dTab extends Panel.OdometryTab {
 
             if (util.is(this.cameraHook.value, "arr")) {
                 let value = this.cameraHook.value;
-                const positioning = generatePositioning(value, this.lengthUnits, this.angleUnits, cameraHookLock.value ? 0.5 : 0);
+                const positioning = Odometry3d.generatePositioning(value, this.lengthUnits, this.angleUnits, cameraHookLock.value ? 0.5 : 0);
                 render.defaultComponent.pos = positioning.pos;
                 render.defaultComponent.q = positioning.q;
                 if (render.defaultComponent.theObject) {
@@ -8254,7 +8200,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                     render.display.type = type;
                     render.display.data = value;
                     render.type = this.pose.type;
-                    const positioning = generatePositioning(value.slice(i*type, (i+1)*type), this.tab.lengthUnits, this.tab.angleUnits);
+                    const positioning = Odometry3d.generatePositioning(value.slice(i*type, (i+1)*type), this.tab.lengthUnits, this.tab.angleUnits);
                     render.defaultComponent.pos = positioning.pos;
                     render.defaultComponent.q = positioning.q;
                     render.components.forEach(k => {
@@ -8266,7 +8212,7 @@ Panel.Odometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends Panel
                         if (value.length <= 0) return renderComp.pos = renderComp.q = 0;
                         if (!(value.length % 7 == 0 || value.length % 3 == 0)) return renderComp.pos = renderComp.q = 0;
                         let type = (value.length % 7 == 0) ? 7 : (value.length % 3 == 0) ? 3 : 0;
-                        const positioning = generatePositioning(value.slice(i*type, (i+1)*type), this.tab.lengthUnits, this.tab.angleUnits);
+                        const positioning = Odometry3d.generatePositioning(value.slice(i*type, (i+1)*type), this.tab.lengthUnits, this.tab.angleUnits);
                         renderComp.pos = positioning.pos;
                         renderComp.q = positioning.q;
                     });
@@ -8881,7 +8827,7 @@ export default class App extends app.AppFeature {
                     let btn = this.eDrag.children[0].children[0].children[0];
                     let icon = btn.children[0], name = btn.children[1];
                     name.textContent = (node.name.length > 0) ? node.name : "/";
-                    let display = getDisplay(node.hasField() ? node.field.type : null, node.hasField() ? node.field.get() : null);
+                    let display = Source.Field.getDisplay(node);
                     if (display != null) {
                         if ("src" in display) icon.setAttribute("src", display.src);
                         else icon.name = display.name;
@@ -9400,33 +9346,8 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         
         let toolButtons = Panel.getTools();
         this.addToolButton(toolButtons.map(data => {
-            let btn = new ToolButton(data.nickname, data.id);
+            let btn = new ToolButton(this.app, data.class);
             btn.elem.disabled = !!data.disabled;
-            btn.addHandler("trigger", () => {
-                if (!!data.disabled) return;
-                if (!this.hasActivePanel()) return;
-                const active = this.activeWidget;
-                active.addTab(new data.tab(), active.tabIndex+1);
-            });
-            btn.addHandler("contextmenu", e => {
-                let itm;
-                let menu = new core.Menu();
-                itm = menu.addItem(new core.Menu.Item("Open"));
-                itm.addHandler("trigger", e => {
-                    btn.post("trigger", e);
-                });
-                itm = menu.addItem(new core.Menu.Item("Start Dragging"));
-                itm.addHandler("trigger", e => {
-                    btn.post("drag", e);
-                });
-                core.Menu.contextMenu = menu;
-                core.Menu.placeContextMenu(e.pageX, e.pageY);
-            });
-            btn.addHandler("drag", () => {
-                if (!!data.disabled) return;
-                this.app.dragData = new data.tab();
-                this.app.dragging = true;
-            });
             return btn;
         }));
 

@@ -1328,6 +1328,24 @@ export class Odometry3d extends Odometry {
         return this.loadedRobots[name].components[component][type];
     }
 
+    static generatePositioning(value, lengthUnits, angleUnits, z2d=0) {
+        value = util.ensure(value, "arr").map(v => util.ensure(v, "num"));
+        if (value.length == 7)
+            return {
+                pos: value.slice(0, 3).map(v => lib.Unit.convert(v, lengthUnits, "m")),
+                q: value.slice(3, 7),
+            };
+        if (value.length == 3)
+            return {
+                pos: [...value.slice(0, 2).map(v => lib.Unit.convert(v, lengthUnits, "m")), util.ensure(z2d, "num")],
+                q: (d => [Math.cos(d/2), 0, 0, Math.sin(d/2)])(lib.Unit.convert(value[2], angleUnits, "rad")),
+            };
+        return {
+            pos: [0, 0, 0],
+            q: [0, 0, 0, 0],
+        };
+    }
+
     constructor(elem) {
         super(elem);
 
