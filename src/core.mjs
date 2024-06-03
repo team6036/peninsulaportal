@@ -5,6 +5,9 @@ import * as lib from "./lib.mjs";
 import * as THREE from "three";
 
 
+import Source from "./sources/source.js";
+
+
 // window.f = () => {
 //     ["space-steel", "moon-steel", "blue-marine", "legacy"].forEach((theme, i) => setTimeout(() => window.api.set("active-theme", theme), 10000 + i*1000));
 // };
@@ -1938,7 +1941,85 @@ Explorer.Node = class ExplorerNode extends util.Target {
         this.updateDisplay();
         this.explorer.format();
     }
+};
+export class FieldExplorer extends Explorer {
+    static SORT = true;
 }
+FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
+    #canShowValue;
+
+    static EXPLORER = FieldExplorer;
+
+    static doubleTraverse(nodeArr, enodeArr, addFunc, remFunc, dumpFunc=null) {
+        return super.doubleTraverse(
+            util.ensure(nodeArr, "arr").filter(node => (node instanceof Source.Node)).map(node => {
+                node.info = node.hasField() ? node.field.type : null;
+                node.value = node.hasField() ? node.field.get() : null;
+                node.tooltip = node.hasField() ? lib.stringify(node.field.getMeta()) : null;
+                return node;
+            }),
+            enodeArr,
+            addFunc,
+            remFunc,
+            dumpFunc,
+        );
+    }
+
+    constructor(name, type) {
+        super(name, type);
+
+        this.addHandler("trigger", e => {
+            if (!this.eDisplay.contains(e.target)) return;
+            if (this.isJustPrimitive || e.shiftKey) this.showValue = this.canShowValue && !this.showValue;
+            else this.isOpen = !this.isOpen;
+        });
+
+        this.canShowValue = true;
+    }
+
+    get canShowValue() { return this.#canShowValue; }
+    set canShowValue(v) {
+        v = !!v;
+        if (this.canShowValue == v) return;
+        this.#canShowValue = v;
+        this.showValue &&= this.canShowValue;
+    }
+
+    get type() { return this.info; }
+    hasType() { return this.info != null; }
+    get isStruct() { return this.hasType() && this.type.startsWith("struct:"); }
+    get isArray() { return this.hasType() && this.type.endsWith("[]"); }
+    get baseType() {
+        return this.type.slice(this.isStruct ? 7 : 0, this.type.length - (this.isArray ? 2 : 0));
+    }
+    get isPrimitive() { return this.hasType() && Source.Field.TYPES.includes(this.baseType) && (this.type != "json"); }
+    get isJustPrimitive() { return this.isPrimitive && !this.isArray; }
+
+    get value() {
+        if (!this.hasType()) return this.isOpen;
+        return this.isArray ? [...util.ensure(super.value, "arr")] : super.value;
+    }
+    set value(v) {
+        v = Source.Field.ensureType(this.type, v);
+        super.value = v;
+    }
+
+    updateDisplay() {
+        this.icon = null;
+        this.iconSrc = null;
+        let display = Source.Field.getDisplay(this.type, this.value);
+        if (display != null) {
+            if ("src" in display) this.iconSrc = display.src;
+            else this.icon = display.name;
+            let color = util.ensure(display.color, "str");
+            if (this.eIcon.style.color != color) this.eIcon.style.color = this.eValue.style.color = display.color;
+        } else {
+            this.icon = "";
+            this.eIcon.style.color = this.eValue.style.color = "";
+        }
+        if (this.showValue) this.eValue.textContent = Source.Field.getRepresentation(this.value, this.type == "structschema");
+    }
+};
 
 export class Form extends util.Target {
     #fields;
