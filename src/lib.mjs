@@ -80,6 +80,19 @@ export function sanitize(s) {
     return s;
 }
 
+export const COLORS = [
+    { _: "cr", h: "cr5", d: "cr3", name: "Red" },
+    { _: "co", h: "co5", d: "co3", name: "Orange" },
+    { _: "cy", h: "cy5", d: "cy3", name: "Yellow" },
+    { _: "cg", h: "cg5", d: "cg3", name: "Green" },
+    { _: "cc", h: "cc5", d: "cc3", name: "Cyan" },
+    { _: "cb", h: "cb5", d: "cb3", name: "Blue" },
+    { _: "cp", h: "cp5", d: "cp3", name: "Purple" },
+    { _: "cm", h: "cm5", d: "cm3", name: "Magenta" },
+    { _: "v8", h: "v8", d: "v6", name: "White" },
+    { _: "v4", h: "v5", d: "v2", name: "Grey" },
+];
+
 export const APPFEATURES = ["PANEL", "PLANNER", "PIT", "PYTHONTK"];
 export const FEATURES = ["PORTAL", "PRESETS", ...APPFEATURES];
 export const MODALS = ["ALERT", "CONFIRM", "PROMPT", "PROGRESS"];
