@@ -171,7 +171,7 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
         const field = node.field;
         if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
             if (field.isArray)
-                return node.nodeObjects.map(node => this.getValue(node)).collapse();
+                return util.collapseArray(node.nodeObjects.map(node => this.getValue(node)));
             const decoded = util.ensure(field.getDecoded(), "obj");
             let pths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(pth => util.ensure(pth, "arr").map(v => String(v)));
             return pths.map(pth => {
@@ -192,7 +192,7 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
         const field = node.field;
         if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
             if (field.isArray)
-                return node.nodeObjects.map(node => this.getValue(node)).collapse();
+                return util.collapseArray(node.nodeObjects.map(node => this.getValue(node)));
             const range = field.getDecodedRange(tsStart, tsStop);
             let pths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(pth => util.ensure(pth, "arr").map(v => String(v)));
             range.v = range.v.map(decoded => {

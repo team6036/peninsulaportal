@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+
+        "esModuleInterop": true,
+
+        "moduleResolution": "node",
+
+        "forceConsistentCasingInFileNames": true,
+
+        "strict": true,
+
+        "removeComments": true,
+        
+        "resolveJsonModule": true
+    }
+  }
+  

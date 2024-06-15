@@ -1832,7 +1832,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             let color = null;
             for (let c of "roygcbpm") {
                 let cc = PROPERTYCACHE.getColor("--c"+c);
-                let diff = cc.diff(this.fColor.value);
+                let diff = cc.averageDifference(this.fColor.value);
                 if (diff >= 1) continue;
                 color = c;
             }

@@ -357,7 +357,7 @@ PanelLogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     try {
                         progress(0);
                         const sum = [];
-                        const updateSum = () => progress(util.lerp(0, 1/3, sum.sum()/sum.length));
+                        const updateSum = () => progress(util.lerp(0, 1/3, util.sumArray(sum)/sum.length));
                         const sources = (await Promise.all(state.logs.map(async (log, i) => {
                             sum.push(0);
                             let source = null;
@@ -662,7 +662,7 @@ PanelLogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     try {
                         progress(0);
                         let sum, a, b;
-                        const updateSum = () => progress(util.lerp(a, b, sum.sum()/sum.length));
+                        const updateSum = () => progress(util.lerp(a, b, util.sumArray(sum)/sum.length));
                         [sum, a, b] = [[], 0, 0.5];
                         const sources = 
                             ((state.importFrom == "session") ?
@@ -741,10 +741,10 @@ PanelLogWorksTab.Action = class PanelLogWorksTabAction extends util.Target {
                     Array.from(state.eLogs.querySelectorAll(":scope > div:not(.overlay)")).forEach(elem => elem.remove());
                     let logs = state.logs;
                     if (state.importFrom == "ds") {
-                        logs = logs.map(pth => {
-                            let {logPth, eventsPth} = lib.getDSPaths(pth);
-                            return [logPth, eventsPth];
-                        }).collapse();
+                        logs = util.collapseArray(logs.map(pth => {
+                            let { logPath, eventsPath } = lib.getDriverStationPaths(pth);
+                            return [logPath, eventsPath];
+                        }));
                     }
                     logs.forEach(log => {
                         let elem = document.createElement("div");

@@ -36,8 +36,20 @@
 		"ytdl-core": "^4.11.5"
 	},
 	"devDependencies": {
+		"@rollup/plugin-commonjs": "^25.0.8",
+		"@rollup/plugin-json": "^6.1.0",
+		"@rollup/plugin-node-resolve": "^15.2.3",
+		"@rollup/plugin-typescript": "^11.1.6",
+		"@types/electron": "^1.6.10",
+		"@types/highlight.js": "^10.1.0",
+		"@types/showdown": "^2.0.6",
+		"@types/three": "^0.165.0",
 		"electron": "^28.2.0",
-		"electron-builder": "^24.9.1"
+		"electron-builder": "^24.9.1",
+		"rollup-plugin-cleanup": "^3.2.1",
+		"rollup-plugin-minify": "^1.0.3",
+		"tslib": "^2.6.2",
+		"typescript": "^5.4.5"
 	},
 	"build": {
 		"appId": "org.peninsularobotics.peninsulaportal",

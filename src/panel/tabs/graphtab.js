@@ -387,7 +387,7 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                 });
                 range[0] = util.ensure(range[0], "num");
                 range[1] = util.ensure(range[1], "num");
-                let step = lib.findStep(range[1]-range[0], 5);
+                let step = lib.findStepValue(range[1]-range[0], 5);
                 range[0] = Math.floor(range[0]/step) - 1;
                 range[1] = Math.ceil(range[1]/step) + 1;
                 o.step = step;
@@ -401,7 +401,7 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                 range[0] -= addBelow;
                 range[1] += addAbove;
             });
-            const timeStep = lib.findStep(graphRange[1]-graphRange[0], 10);
+            const timeStep = lib.findStepValue(graphRange[1]-graphRange[0], 10);
             const mnx = this.paddingLeft*quality, mxx = ctx.canvas.width - this.paddingRight*quality;
             const mny = this.paddingTop*quality, mxy = ctx.canvas.height - this.paddingBottom*quality;
             let y0 = mny, y1 = mxy;
@@ -686,7 +686,7 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                 ctx.fillText("∆ "+util.formatTime(t1-t0), (x0+x1)/2, y-5*quality);
             }
             let scroll = new V(scrollX, scrollY);
-            let scrollAngle = util.clampAngle(scroll.towards(0, 0)+180);
+            let scrollAngle = util.clampAngleDegrees(scroll.towards(0, 0)+180);
             let scrollMag = scroll.dist();
             if (scrollMag > 3) {
                 if (scrollAxis == null)
