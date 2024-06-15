@@ -25,8 +25,8 @@ export default class DSSource extends HistoricalSource {
         return data;
     }
     static async fetch(pth) {
-        let {logPth, eventsPth} = lib.getDSPaths(pth);
-        let [logData, eventsData] = await Promise.all([logPth, eventsPth].map(async pth => await super.fetch(pth)));
+        let { logPath, eventsPath } = lib.getDriverStationPaths(pth);
+        let [logData, eventsData] = await Promise.all([logPath, eventsPath].map(async pth => await super.fetch(pth)));
         return {
             logData: logData,
             eventsData: eventsData,

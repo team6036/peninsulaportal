@@ -255,9 +255,9 @@ export default class App extends app.App {
 
             lib.APPFEATURES.forEach(name => {
                 let btn;
-                btn = this.addFeatureButton(new FeatureButton(lib.getName(name), lib.getIcon(name)));
+                btn = this.addFeatureButton(new FeatureButton(lib.getAppName(name), lib.getAppIcon(name)));
                 btn.addHandler("trigger", e => this.post("cmd-spawn", name));
-                btn = this.addUpperFeatureButton(new UpperFeatureButton(lib.getIcon(name)));
+                btn = this.addUpperFeatureButton(new UpperFeatureButton(lib.getAppIcon(name)));
                 btn.addHandler("trigger", e => this.post("cmd-spawn", name));
             });
 

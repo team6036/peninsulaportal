@@ -282,13 +282,13 @@ App.ApplicationForm = class AppApplicationForm extends App.Form {
         this.#fScoutURL = this.form.addField(new core.Form.NInput("scout-url", 1, "url"));
         this.fScoutURL.type = "";
 
-        [
+        util.flattenArray([
             this.fSocketHost,
             this.fAssetsOwner,
             this.fAssetsRepo,
             this.fAssetsTag,
             this.fScoutURL,
-        ].flatten().forEach(o => (o.disabled = true));
+        ]).forEach(o => (o.disabled = true));
 
         this.addHandler("pull", async () => {
             ignore = true;
@@ -677,13 +677,13 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
         const fBases = [];
 
         const update = () => {
-            [
+            util.flattenArray([
                 fButtons.eContent.children[1],
                 fButtons.eContent.children[2],
                 fName,
                 Object.keys(fColors).map(k => [fColors[k].field]),
                 fBases.map(o => o.field),
-            ].flatten().forEach(o => (o.disabled = this.disabled));
+            ]).forEach(o => (o.disabled = this.disabled));
         };
 
         this.addHandler("change-disable", update);
@@ -988,14 +988,14 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
         });
 
         const update = () => {
-            [
+            util.flattenArray([
                 fButtons.eContent.children[1],
                 fButtons.eContent.children[2],
                 fName, fSize,
                 fRobotSize, fRobotMass,
                 fOdom2dChange, fOdom2dRemove, odom2dDropTarget,
                 fOdom3dChange, fOdom3dRemove, odom3dDropTarget,
-            ].flatten().forEach(o => (o.disabled = this.disabled));
+            ]).forEach(o => (o.disabled = this.disabled));
         };
 
         this.addHandler("change-disabled", update);
@@ -1218,7 +1218,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
         const fComponents = {};
 
         const update = () => {
-            [
+            util.flattenArray([
                 fButtons.eContent.children[1],
                 fButtons.eContent.children[2],
                 fName,
@@ -1249,7 +1249,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     ]),
                     fComponents[k].fTranslations,
                 ]),
-            ].flatten().forEach(o => (o.disabled = this.disabled));
+            ]).forEach(o => (o.disabled = this.disabled));
         };
 
         this.addHandler("change-disabled", update);
@@ -1585,11 +1585,11 @@ App.HolidaysForm.Item = class AppHolidaysFormItem extends App.HolidaysForm.Item 
         fName.type = "";
 
         const update = () => {
-            [
+            util.flattenArray([
                 fButtons.eContent.children[1],
                 fButtons.eContent.children[2],
                 fName,
-            ].flatten().forEach(o => (o.disabled = this.disabled));
+            ]).forEach(o => (o.disabled = this.disabled));
         };
 
         this.addHandler("change-disabled", update);
