@@ -94,8 +94,7 @@ export default class PanelAddTab extends PanelTab {
         this.clearTags();
         this.placeholder = "";
         this.clearItems();
-        // let toolItems = Panel.getTools();
-        let toolItems = [];
+        let toolItems = this.Panel.getTools();
         toolItems = toolItems.map(data => {
             let itm = new PanelAddTab.Button(data.class.NAME, "", "");
             let btn = itm;

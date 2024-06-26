@@ -32,6 +32,9 @@ export default class PanelTab extends util.Target {
         Panel = panel;
     }
 
+    static get Panel() { return Panel; }
+    get Panel() { return this.constructor.Panel; }
+
     constructor(a) {
         super();
 
