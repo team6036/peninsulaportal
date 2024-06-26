@@ -506,12 +506,27 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                         if (ranges.length > 0) {
                             let px = ranges.at(-1).x;
                             let r = ranges.at(-1).r;
-                            if (x-px > quality) ranges.push({ x: x, r: [v, v], v: v });
+                            let ends = ranges.at(-1).ends;
+                            if (x-px > quality) ranges.push({
+                                x: x, r: [v, v], v: v,
+                                ends: {
+                                    l: [x, v],
+                                    r: [x, v],
+                                },
+                            });
                             else {
                                 r[0] = Math.min(r[0], v);
                                 r[1] = Math.max(r[1], v);
+                                if (x < ends.l[0]) ends.l = [x, v];
+                                if (x > ends.r[0]) ends.r = [x, v];
                             }
-                        } else ranges.push({ x: x, r: [v, v], v: v });
+                        } else ranges.push({
+                            x: x, r: [v, v], v: v,
+                            ends: {
+                                l: [x, v],
+                                r: [x, v],
+                            },
+                        });
                     }
                     // end todo
                     ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? PROPERTYCACHE.get(v.color) : v.color : "#fff";
@@ -521,21 +536,25 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                     ctx.beginPath();
                     let py = null;
                     let potentialFoundHints = [], usePotential = false;
-                    ranges.forEach((p, i) => {
-                        let x = p.x, r = p.r, v = p.v;
-                        let y1 = r[0], y2 = r[1];
+                    ranges.forEach((ri, i) => {
+                        let {x, r, v, ends } = ri;
+                        let y1 = r[0], y2 = r[1], yl = ends.l[1], yr = ends.r[1];
                         y1 = (y1-(step*range[0])) / (step*(range[1]-range[0]));
                         y2 = (y2-(step*range[0])) / (step*(range[1]-range[0]));
+                        yl = (yl-(step*range[0])) / (step*(range[1]-range[0]));
+                        yr = (yr-(step*range[0])) / (step*(range[1]-range[0]));
                         y1 = util.lerp(mny, mxy, 1-y1);
                         y2 = util.lerp(mny, mxy, 1-y2);
+                        yl = util.lerp(mny, mxy, 1-yl);
+                        yr = util.lerp(mny, mxy, 1-yr);
                         if (i > 0) {
                             ctx.lineTo(x, py);
-                            ctx.lineTo(x, (y1+y2)/2);
-                        } else ctx.moveTo(x, (y1+y2)/2);
+                            ctx.lineTo(x, yl);
+                        } else ctx.moveTo(x, yl);
                         ctx.lineTo(x, y1);
                         ctx.lineTo(x, y2);
-                        ctx.lineTo(x, (y1+y2)/2);
-                        py = (y1+y2)/2
+                        ctx.lineTo(x, yr);
+                        py = yr;
                         if (
                             (mouseXCanv != null) &&
                             (mouseYCanv != null) &&
@@ -543,7 +562,7 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                             (hintAlt || (mouseYCanv > y1-2*quality && mouseYCanv < y2+5*quality))
                         ) {
                             foundHints.push({
-                                x: mouseXCanv, y: py,
+                                x: mouseXCanv, y: yl,
                                 name: node.path,
                                 color: ctx.strokeStyle,
                                 value: v,
@@ -555,7 +574,7 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                             (mouseXCanv0 >= x && (i+1 >= ranges.length || mouseXCanv0 < ranges[i+1].x))
                         ) {
                             potentialFoundHints.push({
-                                x: mouseXCanv0, y: py,
+                                x: mouseXCanv0, y: yl,
                                 name: node.path,
                                 color: ctx.strokeStyle,
                                 value: v,
