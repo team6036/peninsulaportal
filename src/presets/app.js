@@ -628,7 +628,7 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
                 if (result.canceled) return;
                 const pth = result.filePath;
                 try {
-                    await window.api.send("theme-export", pth, this.k, "data");
+                    await window.api.send("theme-export", pth, this.k);
                 } catch (e) { this.app.doError("Theme Export Error", this.k+", "+pth, e); }
                 return;
             }
@@ -832,7 +832,7 @@ App.TemplatesForm.Item = class AppTemplatesFormItem extends App.TemplatesForm.It
                 if (result.canceled) return;
                 const pth = result.filePath;
                 try {
-                    await window.api.send("template-export", pth, this.k, "data");
+                    await window.api.send("template-export", pth, this.k);
                 } catch (e) { this.app.doError("Template Export Error", this.k+", "+pth, e); }
                 return;
             }
@@ -1095,7 +1095,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                 if (result.canceled) return;
                 const pth = result.filePath;
                 try {
-                    await window.api.send("robot-export", pth, this.k, "data");
+                    await window.api.send("robot-export", pth, this.k);
                 } catch (e) { this.app.doError("Robot Export Error", this.k+", "+pth, e); }
                 return;
             }
@@ -1555,7 +1555,7 @@ App.HolidaysForm.Item = class AppHolidaysFormItem extends App.HolidaysForm.Item 
                 if (result.canceled) return;
                 const pth = result.filePath;
                 try {
-                    await window.api.send("holiday-export", pth, this.k, "data");
+                    await window.api.send("holiday-export", pth, this.k);
                 } catch (e) { this.app.doError("Holiday Export Error", this.k+", "+pth, e); }
                 return;
             }
