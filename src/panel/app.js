@@ -1579,6 +1579,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         if (this.hasWidget()) {
             this.widget.onRem();
             this.widget.clearLinkedHandlers(this, "change");
+            this.widget.clearLinkedHandlers(this, "set-widget");
             this.eContent.removeChild(this.widget.elem);
         }
         this.#widget = v;
@@ -1589,6 +1590,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 this.change("widget", null, this.widget);
             };
             this.widget.addLinkedHandler(this, "change", onChange);
+            this.widget.addLinkedHandler(this, "set-widget", widget => this.widget = widget);
             this.eContent.appendChild(this.widget.elem);
             this.activeWidget = this.widget;
             this.widget.onAdd();

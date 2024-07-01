@@ -302,15 +302,15 @@ export class Container extends Widget {
     collapse() {
         this.children.forEach(child => child.collapse());
         if (this.children.length <= 0) {
-            if (this.hasPageParent()) this.parent.widget = null;
-            else if (this.hasParent()) this.parent.remChild(this);
+            if (this.hasParent()) this.parent.remChild(this);
+            else this.post("set-widget", null);
             return;
         }
         if (this.children.length <= 1) {
             let child = this.children[0];
             this.clearChildren();
-            if (this.hasPageParent()) this.parent.widget = child;
-            else if (this.hasParent()) this.parent.replaceChild(child, this.parent.children.indexOf(this));
+            if (this.hasParent()) this.parent.replaceChild(child, this.parent.children.indexOf(this));
+            else this.post("set-widget", child);
             return;
         }
         this.children.forEach((child, i) => {

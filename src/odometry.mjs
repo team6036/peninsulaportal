@@ -1961,7 +1961,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         let xAxis, yAxis, zAxis;
         xAxis = new THREE.Mesh(
             geometry,
-            material,
+            new THREE.MeshLambertMaterial({ color: 0xff0000 }),
         );
         xAxis.position.set(length/2, 0, 0);
         xAxis.rotateZ(Math.PI/2);
@@ -1969,14 +1969,14 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         axes.xAxis = xAxis;
         yAxis = new THREE.Mesh(
             geometry,
-            material,
+            new THREE.MeshLambertMaterial({ color: 0x00ff00 }),
         );
         yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
         axes.yAxis = yAxis;
         zAxis = new THREE.Mesh(
             geometry,
-            material,
+            new THREE.MeshLambertMaterial({ color: 0x0088ff }),
         );
         zAxis.position.set(0, 0, length/2);
         zAxis.rotateX(Math.PI/2);
@@ -2356,7 +2356,7 @@ Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Targe
                     if (!obj.material._isBumper) {
                         if (!this.render.hasType()) return;
                         if (!this.render.hasBuiltinType()) return;
-                        if (this.render.builtinType == "axis") return;
+                        if (this.render.builtinType == "axes") return;
                     }
                     obj.material.color.set(color.toHex(false));
                 });
