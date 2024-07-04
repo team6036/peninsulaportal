@@ -408,8 +408,8 @@ export class Panel extends Widget {
             menu.addItem(new core.Menu.Divider());
             itm = menu.addItem(new core.Menu.Item("Close"));
             itm.addHandler("trigger", e => {
-                if (this.hasPageParent()) return this.parent.widget = null;
                 if (this.hasParent()) return this.parent.remChild(this);
+                else this.post("set-widget", null);
             });
             core.Menu.contextMenu = menu;
             let r = this.eOptions.getBoundingClientRect();
@@ -533,8 +533,8 @@ export class Panel extends Widget {
     }
     collapse() {
         if (this.tabs.length > 0) return;
-        if (this.hasPageParent()) this.parent.widget = null;
         if (this.hasParent()) this.parent.remChild(this);
+        else this.post("set-widget", null);
     }
 
     get eOptions() { return this.#eOptions; }
