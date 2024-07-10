@@ -151,7 +151,7 @@ WPILOGDecoder.Record = class WPILOGDecoderRecord extends util.Target {
         return Number(this.dataView.getBigInt64(0, true));
     }
     getFloat() {
-        if (this.data.length != 8) throw new Error("getFloat: Unexpected length: "+this.data.length);
+        if (this.data.length != 4) throw new Error("getFloat: Unexpected length: "+this.data.length);
         return this.dataView.getFloat32(0, true);
     }
     getDouble() {
