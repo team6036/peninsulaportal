@@ -1441,12 +1441,12 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 data.dump = enode => {
                     if ("iconSrc" in data) enode.iconSrc = data.iconSrc;
                     else enode.icon = data.icon;
-                    if ("value" in data) enode.tooltip = data.value;
+                    // if ("value" in data) enode.tooltip = data.value;
                     enode.data = data;
                     if (enode._done) return;
                     enode._done = true;
                     enode.eValue.style.color = "var(--a)";
-                    enode.eTooltip.style.color = "var(--a)";
+                    // enode.eTooltip.style.color = "var(--a)";
                     enode.addHandler("trigger", e => {
                         if (!enode.eDisplay.contains(e.target)) return;
                         if (("value" in enode.data) || e.shiftKey) enode.showValue = !enode.showValue;

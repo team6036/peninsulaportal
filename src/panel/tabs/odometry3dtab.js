@@ -352,7 +352,7 @@ export default class PanelOdometry3dTab extends PanelOdometryTab {
 
         a = util.ensure(a, "obj");
         this.odometry.renderType = a.odometry ? a.odometry.renderType : a.renderType;
-        this.odometry.controlType = a.odometry ? a.odometry.controlType : a.controlType;
+        this.odometry.controlType = a.odometry ? a.odometry.controlType : ("controlType" in a) ? a.controlType : "orbit";
         this.lengthUnits = util.ensure(a.lengthUnits, "str", "m");
         this.angleUnits = util.ensure(a.angleUnits, "str", "deg");
         this.odometry.origin = util.ensure(a.origin, "str", "blue+");

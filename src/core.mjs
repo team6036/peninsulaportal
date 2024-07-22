@@ -1688,7 +1688,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
 
     #elem;
     #eDisplay;
-    #eTooltip;
+    // #eTooltip;
     #eMain;
     #eIcon;
     #eName;
@@ -1738,7 +1738,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
             else enode.explorer.clear();
             enode.info = node.info;
             enode.value = node.value;
-            enode.tooltip = node.tooltip;
+            // enode.tooltip = node.tooltip;
             if (util.is(node.dump, "func")) node.dump(enode);
             if (util.is(dumpFunc, "func")) dumpFunc(node, enode);
         }
@@ -1782,23 +1782,23 @@ Explorer.Node = class ExplorerNode extends util.Target {
         this.#eDisplay = document.createElement("button");
         this.elem.appendChild(this.eDisplay);
         this.eDisplay.classList.add("display");
-        this.eDisplay.innerHTML = "<p-tooltip class='tog swx'></p-tooltip>";
-        let enterId = null, leaveId = null;
-        this.eDisplay.addEventListener("mouseenter", e => {
-            clearTimeout(enterId);
-            clearTimeout(leaveId);
-            enterId = setTimeout(() => {
-                this.eDisplay.classList.add("active");
-            }, 2000);
-        });
-        this.eDisplay.addEventListener("mouseleave", e => {
-            clearTimeout(enterId);
-            clearTimeout(leaveId);
-            leaveId = setTimeout(() => {
-                this.eDisplay.classList.remove("active");
-            }, 100);
-        });
-        this.#eTooltip = this.eDisplay.children[0];
+        // this.eDisplay.innerHTML = "<p-tooltip class='tog swx'></p-tooltip>";
+        // let enterId = null, leaveId = null;
+        // this.eDisplay.addEventListener("mouseenter", e => {
+        //     clearTimeout(enterId);
+        //     clearTimeout(leaveId);
+        //     enterId = setTimeout(() => {
+        //         this.eDisplay.classList.add("active");
+        //     }, 2000);
+        // });
+        // this.eDisplay.addEventListener("mouseleave", e => {
+        //     clearTimeout(enterId);
+        //     clearTimeout(leaveId);
+        //     leaveId = setTimeout(() => {
+        //         this.eDisplay.classList.remove("active");
+        //     }, 100);
+        // });
+        // this.#eTooltip = this.eDisplay.children[0];
         this.#eMain = document.createElement("div");
         this.eDisplay.appendChild(this.eMain);
         this.eMain.classList.add("main");
@@ -1897,7 +1897,7 @@ Explorer.Node = class ExplorerNode extends util.Target {
     }
     get elem() { return this.#elem; }
     get eDisplay() { return this.#eDisplay; }
-    get eTooltip() { return this.#eTooltip; }
+    // get eTooltip() { return this.#eTooltip; }
     get eMain() { return this.#eMain; }
     get eIcon() { return this.#eIcon; }
     get eName() { return this.#eName; }
@@ -1934,8 +1934,8 @@ Explorer.Node = class ExplorerNode extends util.Target {
     open() { return this.isOpen = true; }
     close() { return this.isClosed = true; }
 
-    get tooltip() { return this.eTooltip.innerHTML; }
-    set tooltip(v) { this.eTooltip.innerHTML = (v == null) ? "" : String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
+    // get tooltip() { return this.eTooltip.innerHTML; }
+    // set tooltip(v) { this.eTooltip.innerHTML = (v == null) ? "" : String(v).replaceAll("<", "&lt").replaceAll(">", "&gt"); }
 
     format() {
         this.updateDisplay();
@@ -1955,7 +1955,7 @@ FieldExplorer.Node = class FieldExplorerNode extends FieldExplorer.Node {
             util.ensure(nodeArr, "arr").filter(node => (node instanceof Source.Node)).map(node => {
                 node.info = node.hasField() ? node.field.type : null;
                 node.value = node.hasField() ? node.field.get() : null;
-                node.tooltip = node.hasField() ? lib.stringify(node.field.getMeta()) : null;
+                // node.tooltip = node.hasField() ? lib.stringify(node.field.getMeta()) : null;
                 return node;
             }),
             enodeArr,
