@@ -112,7 +112,7 @@ export default class PanelVideoSyncTab extends PanelToolTab {
                     },
                     file: async () => {
                         elem.disabled = true;
-                        let file = await fileOpenDialog({
+                        let file = await core.fileOpenDialog({
                             title: "Choose a video",
                             filters: [{
                                 name: "Video",
@@ -408,7 +408,7 @@ export default class PanelVideoSyncTab extends PanelToolTab {
         if (!this.page.hasProject()) return;
         const k = "vidsync:"+this.video;
         if (!this.page.project.hasProfile(k))
-            this.page.project.addProfile(new Project.Profile(k));
+            this.page.project.addProfile(new this.page.project.constructor.Profile(k));
         [v, this.page.project.getProfile(k).value] = [this.page.project.getProfile(k).value, v];
         this.change("offset", v, this.offset);
     }
@@ -429,7 +429,7 @@ export default class PanelVideoSyncTab extends PanelToolTab {
             return this.change("locked", true, false);
         }
         if (!this.page.project.hasProfile(k))
-            this.page.project.addProfile(new Project.Profile(k));
+            this.page.project.addProfile(new this.page.project.constructor.Profile(k));
         this.page.project.getProfile(k).value = true;
         this.change("locked", false, true);
     }

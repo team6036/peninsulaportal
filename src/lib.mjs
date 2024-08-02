@@ -75,8 +75,7 @@ export function sanitize(s) {
         .split("")
         .map(c => c.charCodeAt(0) >= 32 ? c : "")
         .join("");
-    while (s.endsWith(".") || s.endsWith(" ")) s = s.slice(0, -1);
-    while (s.startsWith(".") || s.startsWith(" ")) s = s.slice(1);
+    s = s.trim();
     return s;
 }
 

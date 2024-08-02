@@ -408,7 +408,7 @@ export default class PanelBrowserTab extends PanelTab {
             return this.change("type", this.type, v);
         }
         if (!this.page.project.hasProfile(k))
-            this.page.project.addProfile(new Project.Profile(k));
+            this.page.project.addProfile(new this.page.project.constructor.Profile(k));
         [v, this.page.project.getProfile(k).value] = [this.page.project.getProfile(k).value, v];
         this.change("type", v, this.type);
     }
@@ -423,7 +423,7 @@ export default class PanelBrowserTab extends PanelTab {
         if (!this.page.hasProject()) return;
         const k = "browsertab:"+this.path+":data";
         if (!this.page.project.hasProfile(k))
-            this.page.project.addProfile(new Project.Profile(k));
+            this.page.project.addProfile(new this.page.project.constructor.Profile(k));
         [v, this.page.project.getProfile(k).value] = [this.page.project.getProfile(k).value, v];
         this.change("typeData", v, this.typeData);
     }
