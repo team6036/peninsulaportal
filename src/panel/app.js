@@ -1363,23 +1363,14 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         const offset = tab.offset;
                         const len = util.ensure(tab.duration, "num") * 1000;
                         const buffered = tab.eVideo.buffered;
-                        while (this.sections.length < n+buffered.length+1)
+                        while (this.sections.length < n+1)
                             this.addSection(new App.ProjectPage.Section(0, 0, 0));
-                        for (let i = 0; i < buffered.length+1; i++) {
-                            let sect = this.sections[n+i];
-                            if (i <= 0) {
-                                sect.l = Math.min(1, Math.max(0, (-offset)/slen));
-                                sect.r = Math.min(1, Math.max(0, (len-offset)/slen));
-                                sect.x = 0;
-                                sect.color = "var(--a)";
-                                continue;
-                            }
-                            sect.l = Math.min(1, Math.max(0, (buffered.start(i-1)*1000-offset)/slen));
-                            sect.r = Math.min(1, Math.max(0, (buffered.end(i-1)*1000-offset)/slen));
-                            sect.x = 1;
-                            sect.color = "var(--v8)";
-                        }
-                        n += buffered.length+1;
+                        let sect = this.sections[n+0];
+                        sect.l = Math.min(1, Math.max(0, (-offset)/slen));
+                        sect.r = Math.min(1, Math.max(0, (len-offset)/slen));
+                        sect.x = 0;
+                        sect.color = "var(--a)";
+                        n += 1;
                     };
                     dfs(this.widget);
                     while (this.sections.length > n)

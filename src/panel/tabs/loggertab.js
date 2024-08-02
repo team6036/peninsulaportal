@@ -235,7 +235,7 @@ export default class PanelLoggerTab extends PanelToolTab {
         this.eUploadBtn.addEventListener("click", async e => {
             e.stopPropagation();
             if (LOGGERCONTEXT.disconnected) return;
-            let result = await fileOpenDialog({
+            let result = await core.fileOpenDialog({
                 title: "Choose a WPILOG log file",
                 buttonLabel: "Upload",
                 filters: [{
