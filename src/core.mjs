@@ -689,6 +689,7 @@ export class Menu extends util.Target {
         document.body.addEventListener("click", e => {
             if (!this.hasContextMenu()) return;
             if (this.contextMenu.elem.contains(e.target) && e.target.classList.contains("blocking")) return;
+            e.stopPropagation();
             this.contextMenu = null;
         }, { capture: true });
     }
