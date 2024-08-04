@@ -3544,6 +3544,9 @@ AppFeature.ProjectPage.Section = class AppFeatureProjectPageSection extends util
 
     get color() { return this.elem.style.backgroundColor; }
     set color(v) { this.elem.style.backgroundColor = v; }
+
+    get text() { return this.elem.textContent; }
+    set text(v) { this.elem.textContent = v; }
     
     get elem() { return this.#elem; }
 };
