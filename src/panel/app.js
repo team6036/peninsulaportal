@@ -980,6 +980,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         this.eNavProgress.addEventListener("mousedown", e => {
             if (e.button != 0) return;
             if (!this.hasSource()) return;
+            if (e.target.classList.contains("section")) return;
             e.preventDefault();
             e.stopPropagation();
             let paused = this.source.playback.paused;
@@ -1350,9 +1351,42 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     requestCollapse = false;
                     this.widget.collapse();
                 }
+                let n = 0, x = 0;
                 if (this.hasSource()) {
                     const sstart = this.source.tsMin, sstop = this.source.tsMax, slen = sstop-sstart;
-                    let n = 0;
+                    const field = this.sourceControlDataField;
+                    if (field) {
+                        const values = field.getRange(sstart, sstop);
+                        let pEnabledTs = null;
+                        let pEnabled = null;
+                        for (let i = 0; i <= values.n; i++) {
+                            let last = i == values.n;
+                            let ts = last ? sstop : values.ts[i];
+                            let v = last ? null : values.v[i];
+                            let enabled = last ? null : (v & 1) != 0;
+                            let auto = last ? null : (v & 2) != 0;
+                            let test = last ? null : (v & 4) != 0;
+                            let estop = last ? null : (v & 8) != 0;
+                            if (pEnabledTs == null || pEnabled != enabled) {
+                                if (pEnabledTs != null) {
+                                    let [ts0, ts1] = [pEnabledTs, ts];
+                                    let value = pEnabled;
+                                    while (this.sections.length < n+1)
+                                        this.addSection(new App.ProjectPage.Section(0, 0, 0));
+                                    let sect = this.sections[n];
+                                    sect.l = Math.min(1, Math.max(0, (ts0-sstart)/slen));
+                                    sect.r = Math.min(1, Math.max(0, (ts1-sstart)/slen));
+                                    sect.x = x;
+                                    sect.color = "var(--c"+(value ? "g" : "r")+")";
+                                    sect.text = value ? "ENABLED" : "DISABLED";
+                                    n++;
+                                }
+                                pEnabledTs = ts;
+                                pEnabled = enabled;
+                            }
+                        }
+                        x += 2;
+                    }
                     const dfs = widget => {
                         if (!(widget instanceof Widget)) return;
                         if (widget instanceof Container)
@@ -1362,20 +1396,21 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         if (!tab.hasVideo()) return;
                         const offset = tab.offset;
                         const len = util.ensure(tab.duration, "num") * 1000;
-                        const buffered = tab.eVideo.buffered;
                         while (this.sections.length < n+1)
                             this.addSection(new App.ProjectPage.Section(0, 0, 0));
-                        let sect = this.sections[n+0];
+                        let sect = this.sections[n];
                         sect.l = Math.min(1, Math.max(0, (-offset)/slen));
                         sect.r = Math.min(1, Math.max(0, (len-offset)/slen));
-                        sect.x = 0;
+                        sect.x = x;
                         sect.color = "var(--a)";
-                        n += 1;
+                        sect.text = tab.video;
+                        n++;
+                        x++;
                     };
                     dfs(this.widget);
-                    while (this.sections.length > n)
-                        this.remSection(this.sections.at(-1));
                 }
+                while (this.sections.length > n)
+                    this.remSection(this.sections.at(-1));
             } else {
                 this.widget = new Panel();
                 this.sections = [];
@@ -1733,6 +1768,18 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             },
         );
         return data;
+    }
+    get sourceControlDataField() {
+        if (!this.hasSource()) return null;
+        const field = this.source.getField("/FMSInfo/FMSControlData");
+        if (!field) return null;
+        if (field.type != "int") return null;
+        return field;
+    }
+    get sourceControlData() {
+        const field = this.sourceControlDataField;
+        if (!field) return null;
+        return field.get();
     }
 
     get eNavPreInfo() { return this.#eNavPreInfo; }

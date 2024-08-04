@@ -639,7 +639,7 @@
 
     transition: background-color var(--t);
 }
-#PROJECTPAGE > .nav > .progress:hover::before {
+#PROJECTPAGE > .nav > .progress:hover:not(:has(> .section:hover))::before {
     background-color: var(--v8);
 }
 #PROJECTPAGE > .nav > .progress::after {
@@ -658,7 +658,7 @@
 
     transition: transform var(--t), background-color var(--t);
 }
-#PROJECTPAGE > .nav > .progress:hover::after {
+#PROJECTPAGE > .nav > .progress:hover:not(:has(> .section:hover))::after {
     transform: translate(-50%, -50%) scale(100%);
 
     background-color: var(--v8);
@@ -684,9 +684,37 @@
     --x: 0;
 
     position: absolute;
-    bottom: calc(50% * (var(--x) + 2));
+    bottom: calc(100% + 5px * var(--x));
     left: var(--l);
     right: calc(100% - var(--r));
+    transform: translateY(0px);
 
-    height: 50%;
+    height: 5px;
+    max-height: 5px;
+    padding: 2.5px 5px;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    align-content: center;
+    gap: 5px;
+
+    color: var(--v8-0);
+
+    font-size: 12px;
+    font-family: monospace;
+
+    transition: transform var(--t), height var(--t), max-height var(--t), padding var(--t), color var(--t);
+}
+#PROJECTPAGE > .nav > .progress > .section:hover {
+    transform: translateY(8.5px);
+
+    height: 22px;
+    max-height: 22px;
+    padding: 5px 5px;
+
+    color: var(--v8);
 }
