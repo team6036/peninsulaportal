@@ -1199,19 +1199,28 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
         template[".robotMass"] = globalTemplate["robotMass"];
         for (let k in template) {
             let v = template[k];
-            k = String(k).split(".");
-            while (k.length > 0 && k.at(0).length <= 0) k.shift();
-            while (k.length > 0 && k.at(-1).length <= 0) k.pop();
             let obj = project;
-            while (k.length > 1) {
-                if (!util.is(obj, "obj")) {
-                    obj = null;
-                    break;
+            k = lib.keyParts(k);
+            while (k.length > 0) {
+                let part = k.shift();
+                let name = part.slice(1);
+                let accessor = part[0];
+                if (accessor == ".") {
+                    if (!util.is(obj, "obj")) break;
+                    if (!(name in obj)) break;
+                    if (k.length > 0) {
+                        obj = obj[name];
+                    } else obj[name] = v;
+                } else if (accessor == "[") {
+                    name = parseInt(name);
+                    if (!util.is(name, "int")) break;
+                    if (!util.is(obj, "arr")) break;
+                    if (name < 0 || name >= obj.length) break;
+                    if (k.length > 0) {
+                        obj = obj[name];
+                    } else obj[name] = v;
                 }
-                obj = obj[k.shift()];
             }
-            if (!util.is(obj, "obj") || k.length != 1) continue;
-            obj[k] = v;
         }
         return true;
     }

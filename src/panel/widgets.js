@@ -158,7 +158,7 @@ export class Container extends Widget {
             this.#weights = this.#weights.map(w => w/wSum);
             this.#children.splice(at, 0, child);
         }
-        child.addLinkedHandler(this, "change", (c, f, t) => this.change("children["+this.#children.indexOf(child)+"]."+c, f, t));
+        child.addLinkedHandler(this, "change", (c, f, t) => this.change("children["+this.#children.indexOf(child)+"."+c, f, t));
         this.change("addChild", null, child);
         this.change("weights", weights, this.weights);
         this.format();
@@ -489,7 +489,7 @@ export class Panel extends Widget {
         if (at == null) at = this.#tabs.length;
         this.#tabs.splice(at, 0, tab);
         tab.parent = this;
-        tab.addLinkedHandler(this, "change", (c, f, t) => this.change("tabs["+this.#tabs.indexOf(tab)+"]."+c, f, t));
+        tab.addLinkedHandler(this, "change", (c, f, t) => this.change("tabs["+this.#tabs.indexOf(tab)+"."+c, f, t));
         this.change("addTab", null, tab);
         this.eTop.appendChild(tab.eTab);
         this.eContent.appendChild(tab.elem);

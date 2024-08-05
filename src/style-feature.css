@@ -710,6 +710,8 @@
     transition: transform var(--t), height var(--t), max-height var(--t), padding var(--t), color var(--t);
 }
 #PROJECTPAGE > .nav > .progress > .section:hover {
+    z-index: 1;
+    
     transform: translateY(8.5px);
 
     height: 22px;

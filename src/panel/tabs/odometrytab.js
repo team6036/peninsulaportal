@@ -131,7 +131,7 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
             if (this.hasPose(pose)) return false;
             this.#poses.add(pose);
             pose.addLinkedHandler(this, "remove", () => this.remPose(pose));
-            pose.addLinkedHandler(this, "change", (c, f, t) => this.change("poses["+this.poses.indexOf(pose)+"]."+c, f, t));
+            pose.addLinkedHandler(this, "change", (c, f, t) => this.change("poses["+this.poses.indexOf(pose)+"."+c, f, t));
             if (this.hasEOptionSection("p"))
                 this.getEOptionSection("p").appendChild(pose.elem);
             this.change("addPose", null, pose);
