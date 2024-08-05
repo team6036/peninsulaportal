@@ -78,6 +78,12 @@ export function sanitize(s) {
     s = s.trim();
     return s;
 }
+export function keyParts(k) {
+    k = String(k);
+    k = k.split(".").map(part => "."+part);
+    k = k.map(part => part.split("[").map((part, i) => i > 0 ? "["+part : part)).flatten();
+    return k;
+}
 
 export const COLORS = [
     { _: "cr", h: "cr5", d: "cr3", name: "Red" },

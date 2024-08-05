@@ -1357,8 +1357,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                     const field = this.sourceControlDataField;
                     if (field) {
                         const values = field.getRange(sstart, sstop);
-                        let pEnabledTs = null;
+                        let pTs = null;
                         let pEnabled = null;
+                        let pEnabledMode = null;
+                        let pDisabledMode = null;
                         for (let i = 0; i <= values.n; i++) {
                             let last = i == values.n;
                             let ts = last ? sstop : values.ts[i];
@@ -1367,25 +1369,28 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                             let auto = last ? null : (v & 2) != 0;
                             let test = last ? null : (v & 4) != 0;
                             let estop = last ? null : (v & 8) != 0;
-                            if (pEnabledTs == null || pEnabled != enabled) {
-                                if (pEnabledTs != null) {
-                                    let [ts0, ts1] = [pEnabledTs, ts];
-                                    let value = pEnabled;
+                            let enabledMode = last ? null : auto ? 0 : test ? 2 : 1;
+                            let disabledMode = last ? null : estop ? 1 : 0;
+                            if (pEnabled != enabled || pEnabledMode != enabledMode || pDisabledMode != disabledMode) {
+                                if (pTs != null) {
+                                    let [ts0, ts1] = [pTs, ts];
                                     while (this.sections.length < n+1)
                                         this.addSection(new App.ProjectPage.Section(0, 0, 0));
                                     let sect = this.sections[n];
                                     sect.l = Math.min(1, Math.max(0, (ts0-sstart)/slen));
                                     sect.r = Math.min(1, Math.max(0, (ts1-sstart)/slen));
                                     sect.x = x;
-                                    sect.color = "var(--c"+(value ? "g" : "r")+")";
-                                    sect.text = value ? "ENABLED" : "DISABLED";
+                                    sect.color = "var(--c"+(pEnabled ? ["b", "g3", "o"][pEnabledMode] : ["r", "r2"][pDisabledMode])+")";
+                                    sect.text = pEnabled ? ["AUTO", "TELEOP", "TEST"][pEnabledMode] : ["ESTOP", "DISABLED"][pDisabledMode];
                                     n++;
                                 }
-                                pEnabledTs = ts;
+                                pTs = ts;
                                 pEnabled = enabled;
+                                pEnabledMode = enabledMode;
+                                pDisabledMode = disabledMode;
                             }
                         }
-                        x += 2;
+                        x++;
                     }
                     const dfs = widget => {
                         if (!(widget instanceof Widget)) return;
@@ -1467,12 +1472,10 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                 data.dump = enode => {
                     if ("iconSrc" in data) enode.iconSrc = data.iconSrc;
                     else enode.icon = data.icon;
-                    // if ("value" in data) enode.tooltip = data.value;
                     enode.data = data;
                     if (enode._done) return;
                     enode._done = true;
                     enode.eValue.style.color = "var(--a)";
-                    // enode.eTooltip.style.color = "var(--a)";
                     enode.addHandler("trigger", e => {
                         if (!enode.eDisplay.contains(e.target)) return;
                         if (("value" in enode.data) || e.shiftKey) enode.showValue = !enode.showValue;

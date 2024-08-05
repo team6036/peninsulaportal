@@ -806,7 +806,7 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
             if (lVar.tab != null) return false;
             this.#lVars.add(lVar);
             lVar.addLinkedHandler(this, "remove", () => this.remLVar(lVar));
-            lVar.addLinkedHandler(this, "change", (c, f, t) => this.change("lVars["+this.lVars.indexOf(lVar)+"]."+c, f, t));
+            lVar.addLinkedHandler(this, "change", (c, f, t) => this.change("lVars["+this.lVars.indexOf(lVar)+"."+c, f, t));
             if (this.hasEOptionSection("l"))
                 this.getEOptionSection("l").appendChild(lVar.elem);
             this.change("addLVar", null, lVar);
@@ -853,7 +853,7 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
             if (rVar.tab != null) return false;
             this.#rVars.add(rVar);
             rVar.addLinkedHandler(this, "remove", () => this.remRVar(rVar));
-            rVar.addLinkedHandler(this, "change", (c, f, t) => this.change("rVars["+this.rVars.indexOf(rVar)+"]."+c, f, t));
+            rVar.addLinkedHandler(this, "change", (c, f, t) => this.change("rVars["+this.rVars.indexOf(rVar)+"."+c, f, t));
             if (this.hasEOptionSection("r"))
                 this.getEOptionSection("r").appendChild(rVar.elem);
             this.change("addRVar", null, rVar);

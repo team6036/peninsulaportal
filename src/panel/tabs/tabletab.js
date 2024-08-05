@@ -158,7 +158,7 @@ export default class PanelTableTab extends PanelToolTab {
         v.tab = this;
         this.elem.appendChild(v.elem);
         v.addLinkedHandler(this, "remove", () => this.remVar(v));
-        v.addLinkedHandler(this, "change", (c, f, t) => this.change("vars["+this.#vars.indexOf(v)+"]."+c, f, t));
+        v.addLinkedHandler(this, "change", (c, f, t) => this.change("vars["+this.#vars.indexOf(v)+"."+c, f, t));
         v.addLinkedHandler(this, "drag", () => {
             this.app.dragData = this.page.source.tree.lookup(v.path);
             this.app.dragging = true;

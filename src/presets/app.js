@@ -743,7 +743,7 @@ App.ThemesForm.Item = class AppThemesFormItem extends App.ThemesForm.Item {
                 });
                 fBases[i].field.addLinkedHandler(this, "change-value", () => {
                     if (ignore) return;
-                    this.change("data.base."+i, null, fBases[i].field.value.toHex(false));
+                    this.change("data.base["+i, null, fBases[i].field.value.toHex(false));
                 });
             }
             while (fBases.length > base.length) {
@@ -1189,7 +1189,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
             const robot = util.ensure(robots[this.k], "obj");
             const zero = util.ensure(robot.zero, "obj");
             const rotations = util.ensure(zero.rotations, "arr");
-            this.change("data.zero.rotations."+rotations.length, null, { axis: "x", angle: 0 });
+            this.change("data.zero.rotations["+rotations.length, null, { axis: "x", angle: 0 });
         });
         const fRotations = [];
         const fTranslations = fZeroForm.form.addField(new core.Form.Input3d("translation"));
@@ -1279,7 +1279,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                 fRemove.addHandler("trigger", async e => {
                     if (ignore) return;
                     try {
-                        await window.api.del("robot", this.k, "zero.rotations."+i);
+                        await window.api.del("robot", this.k, "zero.rotations["+i);
                     } catch (e) { this.app.doError("Robot Default Rotation Delete Error", this.k+", "+i, e); }
                 });
                 fRemove.isHorizontal = true;
@@ -1287,7 +1287,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                 fAxis.showHeader = false;
                 fAxis.addHandler("change-value", () => {
                     if (ignore) return;
-                    this.change("data.zero.rotations."+i+".axis", null, fAxis.value);
+                    this.change("data.zero.rotations["+i+".axis", null, fAxis.value);
                 });
                 const fAngle = fForm.form.addField(new core.Form.Input1d("angle"));
                 fAngle.isHorizontal = true;
@@ -1295,7 +1295,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                 fAngle.baseType = fAngle.activeType = "deg";
                 fAngle.addHandler("change-value", () => {
                     if (ignore) return;
-                    this.change("data.zero.rotations."+i+".angle", null, fAngle.value);
+                    this.change("data.zero.rotations["+i+".angle", null, fAngle.value);
                 });
                 fRotations.push({
                     fForm: fForm,
@@ -1384,7 +1384,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                         const component = util.ensure(components[k], "obj");
                         const zero = util.ensure(component.zero, "obj");
                         const rotations = util.ensure(zero.rotations, "arr");
-                        this.change("data.components."+k+".zero.rotations."+rotations.length, null, { axis: "x", angle: 0 });
+                        this.change("data.components."+k+".zero.rotations["+rotations.length, null, { axis: "x", angle: 0 });
                     });
                     const fRotations = fComponents[k].fRotations = [];
                     const fTranslations = fComponents[k].fTranslations = fZeroForm.form.addField(new core.Form.Input3d("translation"));
@@ -1411,7 +1411,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     fRemove.addHandler("trigger", async e => {
                         if (ignore) return;
                         try {
-                            await window.api.del("robot", this.k, "components."+k+".zero.rotations."+i);
+                            await window.api.del("robot", this.k, "components."+k+".zero.rotations["+i);
                         } catch (e) { this.app.doError("Robot Component Rotation Delete Error", this.k+", "+k+", "+i, e); }
                     });
                     fRemove.isHorizontal = true;
@@ -1419,7 +1419,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     fAxis.showHeader = false;
                     fAxis.addHandler("change-value", () => {
                         if (ignore) return;
-                        this.change("data.components."+k+".zero.rotations."+i+".axis", null, fAxis.value);
+                        this.change("data.components."+k+".zero.rotations["+i+".axis", null, fAxis.value);
                     });
                     const fAngle = fForm.form.addField(new core.Form.Input1d("angle"));
                     fAngle.isHorizontal = true;
@@ -1427,7 +1427,7 @@ App.RobotsForm.Item = class AppRobotsFormItem extends App.RobotsForm.Item {
                     fAngle.baseType = fAngle.activeType = "deg";
                     fAngle.addHandler("change-value", () => {
                         if (ignore) return;
-                        this.change("data.components."+k+".zero.rotations."+i+".angle", null, fAngle.value);
+                        this.change("data.components."+k+".zero.rotations["+i+".angle", null, fAngle.value);
                     });
                     fRotations.push({
                         fForm: fForm,

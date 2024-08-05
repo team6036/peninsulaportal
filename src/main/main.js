@@ -4,7 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /*
 
    ______   ______   _______   __   _______   ______   ___  __   __      _______
-  / ______\/ ______\/ _______\/ __\/ _______\/ ______\/ __\/\__\/ __\   / _______\
+  / ______\/ ______\/ _______\/ __\/ _______\/ ______\/ __\/ __\/ __\   / _______\
  / /  __  / /  __  / /  _    / /  / /  _    /\/  ____/ /  / /  / /  /  / /  __   /
 / /  ____/ /  ____/ /  / /  / /  / /  / /  /\_\___ \/ /  /_/  / /  /_\/ /  __   /
 \/__/    \/______/\/__/\/__/\/__/\/__/\/__/\/______/\/_______/\/_____/\/__/\/__/
@@ -13,7 +13,7 @@ Welcome to Peninsula Portal!
 
 Developed by FRC 6036 - Jeffrey Fan
 
-Haha no documentation!
+Haha no documentation cope!
 
 */
 
@@ -1069,7 +1069,7 @@ const MAIN = async () => {
                 },
 
                 "_writable": async (pth, k="") => {
-                    k = String(k).split(".").filter(part => part.length > 0);
+                    k = lib.keyParts(k);
                     await this.affirm();
                     let content = "";
                     try {
@@ -1082,10 +1082,20 @@ const MAIN = async () => {
                     o = util.ensure(o, "obj");
                     let stack = o;
                     while (k.length > 0) {
-                        let name = k.shift();
-                        if (!util.is(stack, "obj")) return null;
-                        if (!(name in stack)) return null;
-                        stack = stack[name];
+                        let part = k.shift();
+                        let name = part.slice(1);
+                        let accessor = part[0];
+                        if (accessor == ".") {
+                            if (!util.is(stack, "obj")) return null;
+                            if (!(name in stack)) return null;
+                            stack = stack[name];
+                        } else if (accessor == "[") {
+                            name = parseInt(name);
+                            if (!util.is(name, "int")) return null;
+                            if (!util.is(stack, "arr")) return null;
+                            if (name < 0 || name >= stack.length) return null;
+                            stack = stack[name];
+                        }
                     }
                     return stack;
                 },
@@ -1403,7 +1413,7 @@ const MAIN = async () => {
                 },
 
                 "_writable": async (pth, k="", v=null) => {
-                    k = String(k).split(".").filter(part => part.length > 0);
+                    k = lib.keyParts(k);
                     await this.affirm();
                     let content = "";
                     try {
@@ -1416,12 +1426,28 @@ const MAIN = async () => {
                     o = util.ensure(o, "obj");
                     let stack = o;
                     while (k.length > 0) {
-                        let name = k.shift();
-                        if (!util.is(stack, "obj")) return null;
-                        if (k.length > 0) {
-                            if (!(name in stack)) return null;
-                            stack = stack[name];
-                        } else [stack[name], stack] = [v, stack[name]];
+                        let part = k.shift();
+                        let name = part.slice(1);
+                        let accessor = part[0];
+                        if (accessor == ".") {
+                            if (!util.is(stack, "obj")) return null;
+                            if (k.length > 0) {
+                                if (!(name in stack)) stack[name] = k[0][0] == "." ? {} : [];
+                                stack = stack[name];
+                            } else [stack[name], stack] = [v, stack[name]];
+                        } else if (accessor == "[") {
+                            name = parseInt(name);
+                            if (!util.is(name, "int")) return null;
+                            if (!util.is(stack, "arr")) return null;
+                            if (k.length > 0) {
+                                if (name < 0 || name >= stack.length+1) return null;
+                                if (stack.length == 0) stack[0] = k[0][0] == "." ? {} : [];
+                                stack = stack[name];
+                            } else {
+                                if (name < 0 || name >= stack.length+1) return null;
+                                [stack[name], stack] = [v, stack[name]];
+                            }
+                        }
                     }
                     o = lib.cleanupEmpties(o);
                     await this.fileWrite(pth, JSON.stringify(o, null, "\t"));
@@ -1457,7 +1483,7 @@ const MAIN = async () => {
             k = String(k);
             let kfs = {
                 "_writable": async (pth, k="") => {
-                    k = String(k).split(".").filter(part => part.length > 0);
+                    k = lib.keyParts(k);
                     await this.affirm();
                     let content = "";
                     try {
@@ -1470,15 +1496,31 @@ const MAIN = async () => {
                     o = util.ensure(o, "obj");
                     let stack = o;
                     while (k.length > 0) {
-                        let name = k.shift();
-                        if (!util.is(stack, "obj")) return null;
-                        if (k.length > 0) {
+                        let part = k.shift();
+                        let name = part.slice(1);
+                        let accessor = part[0];
+                        if (accessor == ".") {
+                            if (!util.is(stack, "obj")) return null;
                             if (!(name in stack)) return null;
-                            stack = stack[name];
-                        } else {
-                            let v = stack[name];
-                            delete stack[name];
-                            stack = v;
+                            if (k.length > 0) {
+                                stack = stack[name];
+                            } else {
+                                let v = stack[name];
+                                delete stack[name];
+                                stack = v;
+                            }
+                        } else if (accessor == "[") {
+                            name = parseInt(name);
+                            if (!util.is(name, "int")) return null;
+                            if (!util.is(stack, "arr")) return null;
+                            if (name < 0 || name >= stack.length) return null;
+                            if (k.length > 0) {
+                                stack = stack[name];
+                            } else {
+                                let v = stack[name];
+                                stack.splice(name, 1);
+                                stack = v;
+                            }
                         }
                     }
                     o = lib.cleanupEmpties(o);
@@ -3186,7 +3228,7 @@ const MAIN = async () => {
                 },
 
                 "_writable": async (pth, k="") => {
-                    k = String(k).split(".").filter(part => part.length > 0);
+                    k = lib.keyParts(k);
                     await this.affirm();
                     let content = "";
                     try {
@@ -3199,10 +3241,20 @@ const MAIN = async () => {
                     o = util.ensure(o, "obj");
                     let stack = o;
                     while (k.length > 0) {
-                        let name = k.shift();
-                        if (!util.is(stack, "obj")) return null;
-                        if (!(name in stack)) return null;
-                        stack = stack[name];
+                        let part = k.shift();
+                        let name = part.slice(1);
+                        let accessor = part[0];
+                        if (accessor == ".") {
+                            if (!util.is(stack, "obj")) return null;
+                            if (!(name in stack)) return null;
+                            stack = stack[name];
+                        } else if (accessor == "[") {
+                            name = parseInt(name);
+                            if (!util.is(name, "int")) return null;
+                            if (!util.is(stack, "arr")) return null;
+                            if (name < 0 || name >= stack.length) return null;
+                            stack = stack[name];
+                        }
                     }
                     return stack;
                 },
@@ -3542,7 +3594,7 @@ const MAIN = async () => {
             k = String(k);
             let kfs = {
                 "_writable": async (pth, k="", v=null) => {
-                    k = String(k).split(".").filter(part => part.length > 0);
+                    k = lib.keyParts(k);
                     await this.affirm();
                     let content = "";
                     try {
@@ -3555,13 +3607,27 @@ const MAIN = async () => {
                     o = util.ensure(o, "obj");
                     let stack = o;
                     while (k.length > 0) {
-                        let name = k.shift();
-                        if (!util.is(stack, "obj")) return null;
-                        if (k.length > 0) {
-                            if (!(name in stack)) return null;
-                            stack = stack[name];
-                        } else {
-                            [stack[name], stack] = [v, stack[name]];
+                        let part = k.shift();
+                        let name = part.slice(1);
+                        let accessor = part[0];
+                        if (accessor == ".") {
+                            if (!util.is(stack, "obj")) return null;
+                            if (k.length > 0) {
+                                if (!(name in stack)) stack[name] = k[0][0] == "." ? {} : [];
+                                stack = stack[name];
+                            } else [stack[name], stack] = [v, stack[name]];
+                        } else if (accessor == "[") {
+                            name = parseInt(name);
+                            if (!util.is(name, "int")) return null;
+                            if (!util.is(stack, "arr")) return null;
+                            if (k.length > 0) {
+                                if (name < 0 || name >= stack.length+1) return null;
+                                if (stack.length == 0) stack[0] = k[0][0] == "." ? {} : [];
+                                stack = stack[name];
+                            } else {
+                                if (name < 0 || name >= stack.length+1) return null;
+                                [stack[name], stack] = [v, stack[name]];
+                            }
                         }
                     }
                     o = lib.cleanupEmpties(o);
@@ -3691,7 +3757,7 @@ const MAIN = async () => {
             k = String(k);
             let kfs = {
                 "_writable": async (pth, k="") => {
-                    k = String(k).split(".").filter(part => part.length > 0);
+                    k = lib.keyParts(k);
                     await this.affirm();
                     let content = "";
                     try {
@@ -3704,15 +3770,31 @@ const MAIN = async () => {
                     o = util.ensure(o, "obj");
                     let stack = o;
                     while (k.length > 0) {
-                        let name = k.shift();
-                        if (!util.is(stack, "obj")) return null;
-                        if (k.length > 0) {
-                            if (!(name in stack)) return null;
-                            stack = stack[name];
-                        } else {
-                            let v = stack[name];
-                            delete stack[name];
-                            stack = v;
+                        let part = k.shift();
+                        let name = part.slice(1);
+                        let accessor = part[0];
+                        if (accessor == ".") {
+                            if (!util.is(stack, "obj")) return null;
+                            if (k.length > 0) {
+                                if (!(name in stack)) return null;
+                                stack = stack[name];
+                            } else {
+                                let v = stack[name];
+                                delete stack[name];
+                                stack = v;
+                            }
+                        } else if (accessor == "[") {
+                            name = parseInt(name);
+                            if (!util.is(name, "int")) return null;
+                            if (!util.is(stack, "arr")) return null;
+                            if (name < 0 || name >= stack.length) return null;
+                            if (k.length > 0) {
+                                stack = stack[name];
+                            } else {
+                                let v = stack[name];
+                                stack.splice(name, 1);
+                                stack = v;
+                            }
                         }
                     }
                     o = lib.cleanupEmpties(o);
