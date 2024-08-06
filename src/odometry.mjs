@@ -10,6 +10,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+import { MeshLine, MeshLineGeometry, MeshLineMaterial } from "../node_modules/@lume/three-meshline/dist/index.js";
 
 
 export { THREE };
@@ -1418,63 +1419,77 @@ export class Odometry3d extends Odometry {
         new ResizeObserver(updateScene).observe(this.elem);
         this.addHandler("change-quality", updateScene);
 
-        const radius = 0.01;
+        const radius = 0.05;
         const length = 5;
         let axes, xAxis, yAxis, zAxis;
 
-        const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
-
         // TODO: fix mem leak w these scenes vvv
+
+        const xAxisGeo = new MeshLineGeometry();
+        xAxisGeo.setPoints([0, 0, 0, length, 0, 0]);
+        const yAxisGeo = new MeshLineGeometry();
+        yAxisGeo.setPoints([0, 0, 0, 0, length, 0]);
+        const zAxisGeo = new MeshLineGeometry();
+        zAxisGeo.setPoints([0, 0, 0, 0, 0, length]);
 
         this.#axisScene = new THREE.Group();
         this.axisScene._builtin = "axis-scene";
         axes = this.axisScene.axes = new THREE.Group();
         this.axisScene.add(axes);
-        xAxis = this.axisScene.xAxis = new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        xAxis = this.axisScene.xAxis = new MeshLine(
+            xAxisGeo,
+            new MeshLineMaterial({
+                color: 0xffffff,
+                lineWidth: radius,
+            }),
         );
-        xAxis.position.set(length/2, 0, 0);
-        xAxis.rotateZ(Math.PI/2);
         axes.add(xAxis);
-        yAxis = this.axisScene.yAxis = new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        yAxis = this.axisScene.yAxis = new MeshLine(
+            yAxisGeo,
+            new MeshLineMaterial({
+                color: 0xffffff,
+                lineWidth: radius,
+            }),
         );
-        yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
         zAxis = this.axisScene.zAxis = new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+            zAxisGeo,
+            new MeshLineMaterial({
+                color: 0xffffff,
+                lineWidth: radius,
+            }),
         );
-        zAxis.position.set(0, 0, length/2);
-        zAxis.rotateX(Math.PI/2);
         axes.add(zAxis);
+
         this.axisScene.planes = [];
 
         this.#axisSceneSized = new THREE.Group();
         this.axisSceneSized._builtin = "axis-scene-sized";
         axes = this.axisSceneSized.axes = new THREE.Group();
         this.axisSceneSized.add(axes);
-        xAxis = this.axisSceneSized.xAxis = new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        xAxis = this.axisSceneSized.xAxis = new MeshLine(
+            xAxisGeo,
+            new MeshLineMaterial({
+                color: 0xffffff,
+                lineWidth: radius,
+            }),
         );
-        xAxis.position.set(length/2, 0, 0);
-        xAxis.rotateZ(Math.PI/2);
         axes.add(xAxis);
-        yAxis = this.axisSceneSized.yAxis = new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        yAxis = this.axisSceneSized.yAxis = new MeshLine(
+            yAxisGeo,
+            new MeshLineMaterial({
+                color: 0xffffff,
+                lineWidth: radius,
+            }),
         );
-        yAxis.position.set(0, length/2, 0);
         axes.add(yAxis);
-        zAxis = this.axisSceneSized.zAxis = new THREE.Mesh(
-            geometry,
-            new THREE.MeshLambertMaterial({ color: 0xffffff }),
+        zAxis = this.axisSceneSized.zAxis = new MeshLine(
+            zAxisGeo,
+            new MeshLineMaterial({
+                color: 0xffffff,
+                lineWidth: radius,
+            }),
         );
-        zAxis.position.set(0, 0, length/2);
-        zAxis.rotateX(Math.PI/2);
         axes.add(zAxis);
         this.axisSceneSized.planes = [];
 

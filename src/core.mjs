@@ -3,6 +3,7 @@ import { V } from "./util.mjs";
 import * as lib from "./lib.mjs";
 
 import * as THREE from "three";
+import { MeshLine, MeshLineGeometry, MeshLineMaterial } from "../node_modules/@lume/three-meshline/dist/index.js";
 
 
 import Source from "./sources/source.js";
@@ -688,7 +689,7 @@ export class Menu extends util.Target {
     static {
         document.body.addEventListener("click", e => {
             if (!this.hasContextMenu()) return;
-            if (this.contextMenu.elem.contains(e.target) && e.target.classList.contains("blocking")) return;
+            if (this.contextMenu.elem.contains(e.target)) return this.contextMenu = null;
             e.stopPropagation();
             this.contextMenu = null;
         }, { capture: true });

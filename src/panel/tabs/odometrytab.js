@@ -15,6 +15,9 @@ import PanelToolCanvasTab from "./toolcanvastab.js";
 
 
 export default class PanelOdometryTab extends PanelToolCanvasTab {
+    #lengthUnits;
+    #angleUnits;
+
     #poses;
 
     #template;
@@ -27,12 +30,13 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
     static ICONSRC = null;
     static ICONCOLOR = "var(--cy)";
 
-    static PATTERNS = {};
-
     constructor(a) {
         super(a);
 
         this.elem.classList.add("odometry");
+
+        this.#lengthUnits = null;
+        this.#angleUnits = null;
 
         this.#poses = new Set();
 
@@ -110,6 +114,21 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
         } catch (e) {}
     }
 
+    get lengthUnits() { return this.#lengthUnits; }
+    set lengthUnits(v) {
+        v = String(v);
+        if (!["m", "cm", "mm", "yd", "ft", "in"].includes(v)) v = "m";
+        if (this.lengthUnits == v) return;
+        this.change("lengthUnits", this.lengthUnits, this.#lengthUnits=v);
+    }
+    get angleUnits() { return this.#angleUnits; }
+    set angleUnits(v) {
+        v = String(v);
+        if (!["deg", "rad", "cycle"].includes(v)) v = "deg";
+        if (this.angleUnits == v) return;
+        this.change("angleUnits", this.angleUnits, this.#angleUnits=v);
+    }
+
     get poses() { return [...this.#poses]; }
     set poses(v) {
         v = util.ensure(v, "arr");
@@ -165,50 +184,112 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
     }
     hasTemplate() { return this.template != null; }
 
-    getValue(node) {
+    getValue(node, ts=null) {
         if (!(node instanceof Source.Node)) return null;
         if (!node.hasField()) return null;
         const field = node.field;
-        if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
-            if (field.isArray)
-                return node.nodeObjects.map(node => this.getValue(node)).collapse();
-            const decoded = util.ensure(field.getDecoded(), "obj");
-            let pths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(pth => util.ensure(pth, "arr").map(v => String(v)));
-            return pths.map(pth => {
-                let o = decoded;
-                for (let i = 0; i < pth.length; i++) {
-                    if (!util.is(o.r, "obj")) return null;
-                    o = o.r[pth[i]];
-                }
-                return o;
+        if (field.isStruct) {
+            if (!["Translation2d", "Translation3d", "Rotation2d", "Rotation3d", "Pose2d", "Pose3d"].includes(field.baseType)) return null;
+            if (field.isArray) {
+                let values = [];
+                node.nodeObjects.forEach(node => values.push(...this.getValue(node, ts)));
+                return values;
+            }
+            const decoded = util.ensure(util.ensure(field.getDecoded(ts), "obj").r, "obj");
+            if (field.baseType.startsWith("Translation")) {
+                const l = parseInt(field.baseType["Translation".length]);
+                let values = Object.values(decoded).map(v => util.ensure(v, "num"));
+                values = values.slice(0, l);
+                values.push(...new Array(Math.max(0, l-values.length)).fill(0));
+                return [{
+                    translation: values.map(v => lib.Unit.convert(v, this.lengthUnits, "m")),
+                    rotation: [0],
+                }];
+            }
+            if (field.baseType.startsWith("Rotation")) {
+                const l = { 2: 1, 3: 7 }[parseInt(field.baseType["Rotation".length])];
+                let values = Object.values(decoded).map(v => util.ensure(v, "num"));
+                values = values.slice(0, l);
+                values.push(...new Array(Math.max(0, l-values.length)).fill(0));
+                return [{
+                    translation: [0, 0],
+                    rotation: values,
+                }];
+            }
+            const translationL = parseInt(field.baseType["Pose".length]);
+            const rotationL = { 2: 1, 3: 7 }[parseInt(field.baseType["Pose".length])];
+            let translationValues = Object.values(util.ensure(util.ensure(decoded.translation, "obj").r, "obj")).map(v => util.ensure(v, "num"));
+            translationValues = translationValues.slice(0, translationL);
+            translationValues.push(...new Array(Math.max(0, translationL-translationValues.length)).fill(0));
+            let rotationValues = Object.values(util.ensure(util.ensure(decoded.rotation, "obj").r, "obj")).map(v => util.ensure(v, "num"));
+            rotationValues = rotationValues.slice(0, rotationL);
+            rotationValues.push(...new Array(Math.max(0, rotationL-rotationValues.length)).fill(0));
+            return [{
+                translation: translationValues.map(v => lib.Unit.convert(v, this.lengthUnits, "m")),
+                rotation: rotationValues,
+            }];
+        }
+        if (!field.isArray) return null;
+        let values = util.ensure(field.get(ts), "arr").map(v => util.ensure(v, "num"));
+        if (values.length % 7 == 0) {
+            const l = values.length / 7;
+            return new Array(l).fill(null).map((_, i) => {
+                return [{
+                    translation: values.slice(i*7, i*7+3).map(v => lib.Unit.convert(v, this.lengthUnits, "m")),
+                    rotation: values.slice(i*7+3, i*7+7),
+                }];
             });
         }
-        if (field.isStruct) return Object.values(util.ensure(util.ensure(field.getDecoded(), "obj").r, "obj"));
-        return field.get();
+        if (values.length % 3 == 0) {
+            const l = values.length / 3;
+            return new Array(l).fill(null).map((_, i) => {
+                return [{
+                    translation: values.slice(i*3, i*3+2).map(v => lib.Unit.convert(v, this.lengthUnits, "m")),
+                    rotation: values.slice(i*3+2, i*3+3).map(v => lib.Unit.convert(v, this.angleUnits, "rad")),
+                }];
+            });
+        }
+        if (values.length % 2 == 0) {
+            const l = values.length / 2;
+            return new Array(l).fill(null).map((_, i) => {
+                return [{
+                    translation: values.slice(i*2, i*2+2).map(v => lib.Unit.convert(v, this.lengthUnits, "m")),
+                    rotation: [0],
+                }];
+            });
+        }
+        return null;
     }
     getValueRange(node, tsStart=null, tsStop=null) {
         if (!(node instanceof Source.Node)) return null;
         if (!node.hasField()) return null;
         const field = node.field;
-        if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
-            if (field.isArray)
-                return node.nodeObjects.map(node => this.getValue(node)).collapse();
-            const range = field.getDecodedRange(tsStart, tsStop);
-            let pths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(pth => util.ensure(pth, "arr").map(v => String(v)));
-            range.v = range.v.map(decoded => {
-                return pths.map(pth => {
-                    let o = decoded;
-                    for (let i = 0; i < pth.length; i++) {
-                        if (!util.is(o.r, "obj")) return null;
-                        o = o.r[pth[i]];
-                    }
-                    return o;
-                });
-            });
-            return range;
+        // if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
+        //     if (field.isArray)
+        //         return node.nodeObjects.map(node => this.getValue(node)).collapse();
+        //     const range = field.getDecodedRange(tsStart, tsStop);
+        //     let pths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(pth => util.ensure(pth, "arr").map(v => String(v)));
+        //     range.v = range.v.map(decoded => {
+        //         return pths.map(pth => {
+        //             let o = decoded;
+        //             for (let i = 0; i < pth.length; i++) {
+        //                 if (!util.is(o.r, "obj")) return null;
+        //                 o = o.r[pth[i]];
+        //             }
+        //             return o;
+        //         });
+        //     });
+        //     return range;
+        // }
+        // if (field.isStruct) return field.getDecodedRange(tsStart, tsStop);
+        // return field.getRange(tsStart, tsStop);
+        let valueRange = [];
+        for (let ts of field.getTSRange(tsStart, tsStop)) {
+            let value = this.getValue(node, ts);
+            if (value == null) return null;
+            valueRange.push(value);
         }
-        if (field.isStruct) return field.getDecodedRange(tsStart, tsStop);
-        return field.getRange(tsStart, tsStop);
+        return valueRange;
     }
 
     get hooks() { return []; }
