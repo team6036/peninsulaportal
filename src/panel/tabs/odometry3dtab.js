@@ -17,9 +17,6 @@ import PanelOdometryTab from "./odometrytab.js";
 export default class PanelOdometry3dTab extends PanelOdometryTab {
     #odometry;
 
-    #lengthUnits;
-    #angleUnits;
-
     #fViewRenderType;
     #fViewControlType;
     #fViewCinematic;
@@ -37,23 +34,6 @@ export default class PanelOdometry3dTab extends PanelOdometryTab {
     static NICKNAME = "Odom3d";
 
     static CREATECTX = false;
-
-    static PATTERNS = {
-        "Pose2d": [
-            ["translation", "x"],
-            ["translation", "y"],
-            ["rotation", "value"],
-        ],
-        "Pose3d": [
-            ["translation", "x"],
-            ["translation", "y"],
-            ["translation", "z"],
-            ["rotation", "q", "w"],
-            ["rotation", "q", "x"],
-            ["rotation", "q", "y"],
-            ["rotation", "q", "z"],
-        ],
-    };
 
     constructor(a) {
         super(a);
@@ -83,9 +63,6 @@ export default class PanelOdometry3dTab extends PanelOdometryTab {
         });
 
         this.quality = this.odometry.quality = 2;
-
-        this.#lengthUnits = null;
-        this.#angleUnits = null;
 
         const eField = this.getEOptionSection("f");
 
@@ -361,21 +338,6 @@ export default class PanelOdometry3dTab extends PanelOdometryTab {
 
     get odometry() { return this.#odometry; }
 
-    get lengthUnits() { return this.#lengthUnits; }
-    set lengthUnits(v) {
-        v = String(v);
-        if (!["m", "cm", "mm", "yd", "ft", "in"].includes(v)) v = "m";
-        if (this.lengthUnits == v) return;
-        this.change("lengthUnits", this.lengthUnits, this.#lengthUnits=v);
-    }
-    get angleUnits() { return this.#angleUnits; }
-    set angleUnits(v) {
-        v = String(v);
-        if (!["deg", "rad", "cycle"].includes(v)) v = "deg";
-        if (this.angleUnits == v) return;
-        this.change("angleUnits", this.angleUnits, this.#angleUnits=v);
-    }
-
     get fViewRenderType() { return this.#fViewRenderType; }
     get fViewControlType() { return this.#fViewControlType; }
     get fViewCinematic() { return this.#fViewCinematic; }
@@ -610,66 +572,72 @@ PanelOdometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends PanelO
     constructor() {
         super();
         
-        this.#value = [];
+        this.#value = { type: null, values: [] };
 
         this.#renders = [];
+
+        function convertAngle(v) {
+            if (v.length == 1) return [Math.cos(v[0]/2), 0, 0, Math.sin(v[0]/2)];
+            return v;
+        }
 
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
             const renders = this.#renders;
-            if (this.value.length <= 0) return this.pose.disable("No data");
-            const value = this.pose.isShown ? this.value : [];
-            this.pose.enable();
-            if (value.length > 0 && (value.length % 7 == 0 || value.length % 3 == 0)) {
-                let l = value.length;
-                let type = (l % 7 == 0) ? 7 : (l % 3 == 0) ? 3 : 0;
-                l /= type;
-                while (renders.length < l) renders.push(this.tab.odometry.addRender(new Odometry3d.Render(this.tab.odometry)));
-                if (renders.length > l) this.tab.odometry.remRender(renders.splice(l));
-                for (let i = 0; i < l; i++) {
-                    const render = renders[i];
-                    render.name = this.pose.path;
-                    render.color = this.pose.color;
-                    render.isGhost = this.pose.isGhost;
-                    render.isSolid = this.pose.isSolid;
-                    render.display.type = type;
-                    render.display.data = value;
-                    render.type = this.pose.type;
-                    const positioning = Odometry3d.generatePositioning(value.slice(i*type, (i+1)*type), this.tab.lengthUnits, this.tab.angleUnits);
-                    render.defaultComponent.pos = positioning.pos;
-                    render.defaultComponent.q = positioning.q;
-                    render.components.forEach(k => {
-                        const renderComp = render.getComponent(k);
-                        if (!renderComp) return;
-                        const poseComp = this.pose.getComponentHook(k);
-                        if (!poseComp) return renderComp.pos = renderComp.q = 0;
-                        const value = util.ensure(poseComp.value, "arr");
-                        if (value.length <= 0) return renderComp.pos = renderComp.q = 0;
-                        if (!(value.length % 7 == 0 || value.length % 3 == 0)) return renderComp.pos = renderComp.q = 0;
-                        let type = (value.length % 7 == 0) ? 7 : (value.length % 3 == 0) ? 3 : 0;
-                        const positioning = Odometry3d.generatePositioning(value.slice(i*type, (i+1)*type), this.tab.lengthUnits, this.tab.angleUnits);
-                        renderComp.pos = positioning.pos;
-                        renderComp.q = positioning.q;
-                    });
-                }
-            } else {
+
+            const values = this.value;
+            if (values.length <= 0) return this.pose.disable("No data");
+
+            if (!this.pose.isShown) {
                 if (renders.length > 0) this.tab.odometry.remRender(renders.splice(0));
-                if (value.length > 0) this.pose.disable("Unable to extrapolate type, length = "+value.length);
+                return;
+            }
+
+            this.pose.enable();
+
+            while (renders.length < values.length) renders.push(this.tab.odometry.addRender(new Odometry3d.Render(this.tab.odometry)));
+            if (renders.length > values.length) this.tab.odometry.remRender(renders.splice(values.length));
+            for (let i = 0; i < values.length; i++) {
+                const render = renders[i];
+                render.name = this.pose.path;
+                render.color = this.pose.color;
+                render.isGhost = this.pose.isGhost;
+                render.isSolid = this.pose.isSolid;
+                render.display.type = 0;
+                render.display.data = [];
+                render.type = this.pose.type;
+                render.defaultComponent.pos = values[i].translation;
+                render.defaultComponent.q = convertAngle(values[i].rotation);
+                render.components.forEach(k => {
+                    const renderComp = render.getComponent(k);
+                    if (!renderComp) return;
+                    const poseComp = this.pose.getComponentHook(k);
+                    if (!poseComp) return renderComp.pos = renderComp.q = 0;
+                    const values = util.ensure(poseComp.value, "arr").map(v => {
+                        v = util.ensure(v, "obj");
+                        return {
+                            translation: util.ensure(v.translation, "arr").map(v => util.ensure(v, "num")),
+                            rotation: util.ensure(v.rotation, "arr").map(v => util.ensure(v, "num")),
+                        };
+                    });
+                    if (values.length != 1) return renderComp.pos = renderComp.q = 0;
+                    renderComp.pos = values[0].translation;
+                    renderComp.q = values[0].rotation;
+                });
             }
         });
     }
 
     get value() { return this.#value; }
     set value(v) {
-        v = util.ensure(v, "arr").map(v => util.ensure(v, "num"));
-        if (this.value.length == v.length) {
-            this.#value = v;
-            return;
-        }
-        this.destroy();
-        this.#value = v;
-        this.create();
+        this.#value = util.ensure(v, "arr").map(v => {
+            v = util.ensure(v, "obj");
+            return {
+                translation: util.ensure(v.translation, "arr").map(v => util.ensure(v, "num")),
+                rotation: util.ensure(v.rotation, "arr").map(v => util.ensure(v, "num")),
+            };
+        });
     }
 
     destroy() {

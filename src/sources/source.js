@@ -462,6 +462,13 @@ Source.Field = class SourceField {
         return this.#logsV[i];
     }
     get(ts=null) { return this.#get(util.ensure(ts, "num", this.source.ts)); }
+    getTSRange(tsStart=null, tsStop=null) {
+        tsStart = util.ensure(tsStart, "num");
+        tsStop = util.ensure(tsStop, "num");
+        let start = this.getIndex(tsStart)+1;
+        let stop = this.getIndex(tsStop)+1;
+        return this.#logsTS.slice(start, stop);
+    }
     getRange(tsStart=null, tsStop=null) {
         tsStart = util.ensure(tsStart, "num");
         tsStop = util.ensure(tsStop, "num");
