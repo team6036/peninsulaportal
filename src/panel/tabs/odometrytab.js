@@ -74,7 +74,7 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
                     this.addHandler("change-template", apply);
                     this.fTemplate.addHandler("change-value", () => {
                         if (!this.fTemplate.hasValue()) return;
-                        this.template = this.fTemplate.value == "§null" ? null : this.fTemplate.value;
+                        this.template = (this.fTemplate.value == "§null") ? null : this.fTemplate.value;
                     });
                 },
                 o: () => {
@@ -97,7 +97,7 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
 
         a = util.ensure(a, "obj");
         this.poses = a.poses;
-        this.template = a.template || GLOBALSTATE.getProperty("active-template").value;
+        this.template = ("template" in a) ? a.template : GLOBALSTATE.getProperty("active-template").value;
     }
 
     applyGlobal() {
@@ -177,7 +177,6 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
 
     get template() { return this.#template; }
     set template(v) {
-        if (v == "§null") return;
         v = (v == null) ? null : String(v);
         if (this.template == v) return;
         this.change("template", this.template, this.#template=v);
@@ -264,25 +263,6 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
         if (!(node instanceof Source.Node)) return null;
         if (!node.hasField()) return null;
         const field = node.field;
-        // if (field.isStruct && (field.baseType in this.constructor.PATTERNS)) {
-        //     if (field.isArray)
-        //         return node.nodeObjects.map(node => this.getValue(node)).collapse();
-        //     const range = field.getDecodedRange(tsStart, tsStop);
-        //     let pths = util.ensure(this.constructor.PATTERNS[field.baseType], "arr").map(pth => util.ensure(pth, "arr").map(v => String(v)));
-        //     range.v = range.v.map(decoded => {
-        //         return pths.map(pth => {
-        //             let o = decoded;
-        //             for (let i = 0; i < pth.length; i++) {
-        //                 if (!util.is(o.r, "obj")) return null;
-        //                 o = o.r[pth[i]];
-        //             }
-        //             return o;
-        //         });
-        //     });
-        //     return range;
-        // }
-        // if (field.isStruct) return field.getDecodedRange(tsStart, tsStop);
-        // return field.getRange(tsStart, tsStop);
         let valueRange = [];
         for (let ts of field.getTSRange(tsStart, tsStop)) {
             let value = this.getValue(node, ts);

@@ -19,8 +19,8 @@ class RLine extends Odometry2d.Render {
     #color;
     #size;
 
-    constructor(odometry, color, size=7.5) {
-        super(odometry);
+    constructor(render, color, size=7.5) {
+        super(render);
 
         this.#waypoints = [];
         this.#color = null;
@@ -574,6 +574,8 @@ PanelOdometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends PanelO
             return v;
         };
 
+        let renderType = "robot";
+
         this.addHandler("update", delta => {
             if (!this.hasTab()) return;
             if (!this.hasPose()) return;
@@ -591,11 +593,38 @@ PanelOdometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends PanelO
             
             this.pose.enable();
 
-            while (renders.length < values.length) renders.push(this.tab.odometry.render.addRender(new Odometry2d.Robot(this.tab.odometry.render)));
-            if (renders.length > values.length) this.tab.odometry.render.remRender(renders.splice(values.length));
+            let wantedRenderType = (this.pose.type == "§traj") ? "traj" : "robot";
+            if (renderType != wantedRenderType) {
+                if (renders.length > 0) this.tab.odometry.render.remRender(renders.splice(0));
+                if (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.splice(0));
+            }
 
             let color = this.pose.color.slice(2);
             let colorH = color+5;
+
+            if (renderType == "traj") {
+                this.pose.fTrail.isShown = false;
+
+                while (renders.length < 1) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 2.5)));
+                if (renders.length > 1) this.tab.odometry.render.remRender(renders.splice(1));
+
+                const render = renders[0];
+                render.color = color;
+                render.alpha = this.pose.isGhost ? 0.5 : 1;
+
+                if (render.nWaypoints < values.length) render.addWaypoint(new Array(values.length-render.nWaypoints).fill(0));
+                if (render.nWaypoints > values.length) render.popWaypoint(Array.from(new Array(render.nWaypoints-values.length).keys()));
+
+                for (let i = 0; i < values.length; i++)
+                    render.getWaypoint(i).set(convertPos(...values[i].translation));
+
+                return;
+            }
+
+            this.pose.fTrail.isShown = true;
+
+            while (renders.length < values.length) renders.push(this.tab.odometry.render.addRender(new Odometry2d.Robot(this.tab.odometry.render)));
+            if (renders.length > values.length) this.tab.odometry.render.remRender(renders.splice(values.length));
 
             for (let i = 0; i < values.length; i++) {
                 const render = renders[i];

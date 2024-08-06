@@ -1071,13 +1071,13 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
             if (!this.hasSource()) return;
             this.source.ts += 5*1000;
         });
-        this.addHandler("nav-back-small", () => {
+        this.addHandler("nav-back-small", shift => {
             if (!this.hasSource()) return;
-            this.source.ts -= 1;
+            this.source.ts -= shift ? 1 : 10;
         });
-        this.addHandler("nav-forward-small", () => {
+        this.addHandler("nav-forward-small", shift => {
             if (!this.hasSource()) return;
-            this.source.ts += 1;
+            this.source.ts += shift ? 1 : 10;
         });
 
         this.#explorer = new FieldExplorer();
