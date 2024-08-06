@@ -3301,11 +3301,11 @@ AppFeature.ProjectPage = class AppFeatureProjectPage extends App.Page {
                 this.eNav.focus();
             }
             if (e.code == "Comma") {
-                this.post("nav-back-small");
+                this.post("nav-back-small", e.shiftKey);
                 this.eNav.focus();
             }
             if (e.code == "Period") {
-                this.post("nav-forward-small");
+                this.post("nav-forward-small", e.shiftKey);
                 this.eNav.focus();
             }
             if (e.code == "Space") {
