@@ -18,6 +18,8 @@ class RLine extends Odometry2d.Render {
     #waypoints;
     #color;
     #size;
+    #startStyle;
+    #endStyle;
 
     constructor(render, color, size=7.5) {
         super(render);
@@ -25,23 +27,55 @@ class RLine extends Odometry2d.Render {
         this.#waypoints = [];
         this.#color = null;
         this.#size = 0;
+        this.#startStyle = null;
+        this.#endStyle = null;
 
         this.color = color;
         this.size = size;
 
+        const renderEnd = (style, p0, p1) => {
+            const ctx = this.odometry.ctx, quality = this.odometry.quality;
+            if (style == null) return;
+            if (style == "node") {
+                ctx.beginPath();
+                ctx.arc(...p0.xy, this.size*2*quality, 0, 2*Math.PI);
+                ctx.fill();
+                return;
+            }
+            if (style == "arrow" || style == "stunt") {
+                if (!p1) return;
+                const dir = p1.towards(p0);
+                const angle = (style == "arrow") ? 135 : 90;
+                ctx.beginPath();
+                ctx.moveTo(...V.dir(dir-angle, this.size*2.5*quality).iadd(p0).xy);
+                ctx.lineTo(...p0.xy);
+                ctx.lineTo(...V.dir(dir+angle, this.size*2.5*quality).iadd(p0).xy);
+                ctx.stroke();
+                return;
+            }
+        };
+
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
-            ctx.strokeStyle = this.color.startsWith("--") ? PROPERTYCACHE.get(this.color) : this.color;
+            const waypoints = this.#waypoints.map(waypoint => this.odometry.worldToCanvas(waypoint));
+            ctx.fillStyle = ctx.strokeStyle = this.color.startsWith("--") ? PROPERTYCACHE.get(this.color) : this.color;
             ctx.lineWidth = this.size*quality;
             ctx.lineJoin = "round";
             ctx.lineCap = "round";
             ctx.beginPath();
             for (let i = 0; i < this.nWaypoints; i++) {
-                let waypoint = this.odometry.worldToCanvas(this.#waypoints[i]);
+                const waypoint = waypoints[i];
                 if (i > 0) ctx.lineTo(...waypoint.xy);
                 else ctx.moveTo(...waypoint.xy);
             }
             ctx.stroke();
+            if (waypoints.length <= 0) return;
+            const start0 = waypoints.at(0);
+            const start1 = waypoints.at(1);
+            const end0 = waypoints.at(-1);
+            const end1 = waypoints.at(-2);
+            renderEnd(this.startStyle, start0, start1);
+            renderEnd(this.endStyle, end0, end1);
         });
     }
 
@@ -96,6 +130,11 @@ class RLine extends Odometry2d.Render {
 
     get size() { return this.#size; }
     set size(v) { this.#size = Math.max(0, util.ensure(v, "num")); }
+
+    get startStyle() { return this.#startStyle; }
+    set startStyle(v) { this.#startStyle = (v == null) ? null : String(v); }
+    get endStyle() { return this.#endStyle; }
+    set endStyle(v) { this.#endStyle = (v == null) ? null : String(v); }
 }
 
 
@@ -317,9 +356,13 @@ export default class PanelOdometry2dTab extends PanelOdometryTab {
             if (this.isClosed) return;
             const source = this.page.source;
             this.poses.forEach(pose => {
-                pose.hooks.forEach(hook => {
+                pose.mainHooks.forEach(hook => {
                     let node = (source && hook.hasPath()) ? source.tree.lookup(hook.path) : null;
                     hook.setFrom((node && node.hasField()) ? node.field.type : "*", (node && node.hasField()) ? node.field.get() : null);
+                });
+                pose.poseHooks.forEach(hook => {
+                    let node = (source && hook.hasPath()) ? source.tree.lookup(hook.path) : null;
+                    hook.setFrom((node && node.hasField()) ? node.field.type : "*", this.getValue(node));
                 });
                 pose.state.pose = pose;
                 let node = source ? source.tree.lookup(pose.path) : null;
@@ -392,6 +435,7 @@ PanelOdometry2dTab.Pose = class PanelOdometry2dTabPose extends PanelOdometryTab.
     #useTrail;
 
     #ghostHook;
+    #vectorHook;
 
     #fTrail;
     #fType;
@@ -418,9 +462,12 @@ PanelOdometry2dTab.Pose = class PanelOdometry2dTabPose extends PanelOdometryTab.
 
         this.#ghostHook = new PanelToolCanvasTab.Hook("Ghost Hook", null);
         this.ghostHook.toggle.show();
-        this.ghostHook.addHandler("change", (c, f, t) => this.change("ghostHook."+c, f, t));
+        this.ghostHook.addHandler("change", (c, f, t) => this.change("vectorHook."+c, f, t));
+        this.#vectorHook = new PanelToolCanvasTab.Hook("Vector Start Hook", null);
+        this.vectorHook.addHandler("change", (c, f, t) => this.change("vectorHook."+c, f, t));
 
         hooksSubform.addField(new core.Form.HTML("ghost-hook", this.ghostHook.elem));
+        hooksSubform.addField(new core.Form.HTML("vector-hook", this.vectorHook.elem));
 
         const form = new core.Form();
         this.eContent.appendChild(form.elem);
@@ -459,6 +506,7 @@ PanelOdometry2dTab.Pose = class PanelOdometry2dTabPose extends PanelOdometryTab.
         this.ghost = a.ghost;
         this.type = a.type || Odometry2d.Robot.TYPES[0];
         this.ghostHook = a.ghostHook;
+        this.vectorHook = a.vectorHook;
         this.trail = a.trail;
         this.useTrail = a.useTrail;
     }
@@ -492,7 +540,9 @@ PanelOdometry2dTab.Pose = class PanelOdometry2dTabPose extends PanelOdometryTab.
         this.change("type", this.type, this.#type=v);
     }
 
-    get hooks() { return [...super.hooks, this.ghostHook]; }
+    get hooks() { return [...this.mainHooks, ...this.poseHooks]; }
+    get mainHooks() { return [...super.hooks, this.ghostHook]; }
+    get poseHooks() { return [this.vectorHook]; }
     get ghostHook() { return this.#ghostHook; }
     set ghostHook(o) { this.ghostHook.from(o); }
     get isGhost() {
@@ -502,6 +552,8 @@ PanelOdometry2dTab.Pose = class PanelOdometry2dTabPose extends PanelOdometryTab.
             return !this.ghostHook.value;
         return this.ghostHook.value;
     }
+    get vectorHook() { return this.#vectorHook; }
+    set vectorHook(o) { this.vectorHook.from(o); }
 
     get trail() { return this.#trail; }
     set trail(v) {
@@ -535,6 +587,7 @@ PanelOdometry2dTab.Pose = class PanelOdometry2dTabPose extends PanelOdometryTab.
             type: this.type,
             shownHook: this.shownHook.to(),
             ghostHook: this.ghostHook.to(),
+            vectorHook: this.vectorHook.to(),
             trail: this.trail,
             useTrail: this.useTrail,
         });
@@ -593,8 +646,12 @@ PanelOdometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends PanelO
             
             this.pose.enable();
 
-            let wantedRenderType = (this.pose.type == "§traj") ? "traj" : "robot";
+            let wantedRenderType =
+                (this.pose.type == "§traj") ? "traj" :
+                (this.pose.type == "§vec") ? "vec" :
+                "robot";
             if (renderType != wantedRenderType) {
+                renderType = wantedRenderType;
                 if (renders.length > 0) this.tab.odometry.render.remRender(renders.splice(0));
                 if (trailRenders.length > 0) this.tab.odometry.render.remRender(trailRenders.splice(0));
             }
@@ -609,7 +666,8 @@ PanelOdometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends PanelO
                 if (renders.length > 1) this.tab.odometry.render.remRender(renders.splice(1));
 
                 const render = renders[0];
-                render.color = color;
+                render.startStyle = render.endStyle = null;
+                render.color = this.pose.color;
                 render.alpha = this.pose.isGhost ? 0.5 : 1;
 
                 if (render.nWaypoints < values.length) render.addWaypoint(new Array(values.length-render.nWaypoints).fill(0));
@@ -617,6 +675,35 @@ PanelOdometry2dTab.Pose.State = class PanelOdometry2dTabPoseState extends PanelO
 
                 for (let i = 0; i < values.length; i++)
                     render.getWaypoint(i).set(convertPos(...values[i].translation));
+
+                return;
+            }
+
+            if (renderType == "vec") {
+                this.pose.fTrail.isShown = false;
+
+                const values2 = util.ensure(this.pose.vectorHook.value, "arr").map(v => {
+                    v = util.ensure(v, "obj");
+                    return {
+                        translation: util.ensure(v.translation, "arr").map(v => util.ensure(v, "num")),
+                        rotation: util.ensure(v.rotation, "arr").map(v => util.ensure(v, "num")),
+                    };
+                });
+
+                while (renders.length < values.length) renders.push(this.tab.odometry.render.addRender(new RLine(this.tab.odometry.render, null, 2.5)));
+                if (renders.length > values.length) this.tab.odometry.render.remRender(renders.splice(values.length));
+
+                for (let i = 0; i < values.length; i++) {
+                    const render = renders[i];
+                    render.startStyle = null;
+                    render.endStyle = "arrow";
+                    render.color = this.pose.color;
+                    render.alpha = this.pose.isGhost ? 0.5 : 1;
+                    if (render.nWaypoints < 2) render.addWaypoint(new Array(2-render.nWaypoints).fill(0));
+                    if (render.nWaypoints > 2) render.popWaypoint(Array.from(new Array(render.nWaypoints-2).keys()));
+                    render.getWaypoint(0).set((i >= values2.length) ? 0 : convertPos(...values2[i].translation));
+                    render.getWaypoint(1).set(convertPos(...values[i].translation));
+                }
 
                 return;
             }

@@ -598,6 +598,7 @@ PanelOdometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends PanelO
 
             while (renders.length < values.length) renders.push(this.tab.odometry.addRender(new Odometry3d.Render(this.tab.odometry)));
             if (renders.length > values.length) this.tab.odometry.remRender(renders.splice(values.length));
+            const compHookValues = {};
             for (let i = 0; i < values.length; i++) {
                 const render = renders[i];
                 render.name = this.pose.path;
@@ -610,20 +611,22 @@ PanelOdometry3dTab.Pose.State = class PanelOdometry3dTabPoseState extends PanelO
                 render.defaultComponent.pos = values[i].translation;
                 render.defaultComponent.q = convertAngle(values[i].rotation);
                 render.components.forEach(k => {
-                    const renderComp = render.getComponent(k);
-                    if (!renderComp) return;
-                    const poseComp = this.pose.getComponentHook(k);
-                    if (!poseComp) return renderComp.pos = renderComp.q = 0;
-                    const values = util.ensure(poseComp.value, "arr").map(v => {
-                        v = util.ensure(v, "obj");
-                        return {
-                            translation: util.ensure(v.translation, "arr").map(v => util.ensure(v, "num")),
-                            rotation: util.ensure(v.rotation, "arr").map(v => util.ensure(v, "num")),
-                        };
-                    });
-                    if (values.length != 1) return renderComp.pos = renderComp.q = 0;
-                    renderComp.pos = values[0].translation;
-                    renderComp.q = values[0].rotation;
+                    const comp = render.getComponent(k);
+                    const compValues = (() => {
+                        if (k in compHookValues) return compHookValues[k];
+                        const compHook = this.pose.getComponentHook(k);
+                        if (!compHook) return compHookValues[k] = null;
+                        return compHookValues[k] = util.ensure(compHook.value, "arr").map(v => {
+                            v = util.ensure(v, "obj");
+                            return {
+                                translation: util.ensure(v.translation, "arr").map(v => util.ensure(v, "num")),
+                                rotation: util.ensure(v.rotation, "arr").map(v => util.ensure(v, "num")),
+                            };
+                        });
+                    })();
+                    if (compValues == null || i >= compValues.length) return comp.pos = comp.q = 0;
+                    comp.pos = compValues[i].translation;
+                    comp.q = compValues[i].rotation;
                 });
             }
         });
