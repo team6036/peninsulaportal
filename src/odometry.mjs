@@ -649,6 +649,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         "§arrow-h",
         "§arrow-t",
         "§traj",
+        "§vec",
         "§2023-cone",
         "§2023-cube",
         "§2024-note",
@@ -664,6 +665,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             "arrow-h": "Arrow (Head Centered)",
             "arrow-t": "Arrow (Tail Centered)",
             "traj": "Trajectory",
+            "vec": "Vector",
             "2023-cone": "2023 Cone",
             "2023-cube": "2023 Cube",
             "2024-note": "2024 Note",
@@ -685,6 +687,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             ],
         },
         "§traj",
+        "§vec",
         null,
         {
             name: "2023",
