@@ -484,7 +484,7 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                             let npts = (i+1 >= log.n) ? graphRange[1] : log.ts[i+1];
                             let x = util.lerp(mnx, mxx, (pts-graphRange[0])/(graphRange[1]-graphRange[0]));
                             let nx = util.lerp(mnx, mxx, (npts-graphRange[0])/(graphRange[1]-graphRange[0]));
-                            ctx.fillStyle = v.hasColor() ? v.color.startsWith("--") ? PROPERTYCACHE.get(v.color+(odd?"2":"")) : v.color : "#fff";
+                            ctx.fillStyle = (v.color.startsWith("var(") && v.color.endsWith(")")) ? PROPERTYCACHE.get(v.color.slice(4, -1)+(odd?"2":"")) : v.color;
                             ctx.fillRect(
                                 x, mnx+(10+20*nDiscrete)*quality,
                                 Math.max(0, nx-x), 15*quality,
@@ -529,7 +529,7 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                         });
                     }
                     // end todo
-                    ctx.strokeStyle = v.hasColor() ? v.color.startsWith("--") ? PROPERTYCACHE.get(v.color) : v.color : "#fff";
+                    ctx.strokeStyle = (v.color.startsWith("var(") && v.color.endsWith(")")) ? PROPERTYCACHE.get(v.color.slice(4, -1)) : v.color;
                     ctx.lineWidth = 1*quality;
                     ctx.lineJoin = "round";
                     ctx.lineCap = "square";
@@ -919,7 +919,8 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                                 let taken = new Array(colors.length).fill(false);
                                 [...this.lVars, ...this.rVars].forEach(v => {
                                     colors.split("").forEach((c, i) => {
-                                        if (v.color == "--c"+c) taken[i] = true;
+                                        if (v.color == "var(--c"+c+")")
+                                            taken[i] = true;
                                     });
                                 });
                                 let nextColor = null;
@@ -931,7 +932,7 @@ export default class PanelGraphTab extends PanelToolCanvasTab {
                                 if (nextColor == null) nextColor = colors[(this.lVars.length+this.rVars.length)%colors.length];
                                 this["add"+side.toUpperCase()+"Var"](new PanelGraphTab.Variable({
                                     path: pth,
-                                    color: "--c"+nextColor,
+                                    color: "var(--c"+nextColor+")",
                                 }));
                             }
                             node.nodeObjects.forEach(node => addVar(node));
@@ -1018,7 +1019,7 @@ PanelGraphTab.Variable = class PanelGraphTabVariable extends util.Target {
 
         this.#path = "";
         this.#shown = null;
-        this.#color = null;
+        this.#color = "var(--v8)";
         this.#ghost = null;
 
         const form = new core.Form();
@@ -1078,7 +1079,7 @@ PanelGraphTab.Variable = class PanelGraphTabVariable extends util.Target {
             this.eColorPicker.appendChild(btn);
             this.#eColorPickerColors.push(btn);
             btn.classList.add("color");
-            btn.color = "--"+colors._;
+            btn.color = "var(--"+colors._+")";
             btn.style.setProperty("--bg", "var(--"+colors._+")");
             btn.style.setProperty("--bgh", "var(--"+colors.h+")");
             btn.style.setProperty("--bgd", "var(--"+colors.d+")");
@@ -1119,7 +1120,7 @@ PanelGraphTab.Variable = class PanelGraphTabVariable extends util.Target {
                 itm = submenu.addItem(new core.Menu.Item(colors.name));
                 itm.eLabel.style.color = "var(--"+colors._+")";
                 itm.addHandler("trigger", e => {
-                    this.color = "--"+colors._;
+                    this.color = "var(--"+colors._+")";
                 });
             });
             core.Menu.contextMenu = menu;
@@ -1189,19 +1190,19 @@ PanelGraphTab.Variable = class PanelGraphTabVariable extends util.Target {
     hide() { return this.hidden = true; }
     get color() { return this.#color; }
     set color(v) {
-        v = (v == null) ? null : String(v);
+        v = String(v);
         if (this.color == v) return;
         this.change("color", this.color, this.#color=v);
-        let color = this.hasColor() ? this.color.startsWith("--") ? PROPERTYCACHE.get(this.color) : this.color : "#fff";
+        const color = (this.color.startsWith("var(") && this.color.endsWith(")")) ? PROPERTYCACHE.get(this.color.slice(4, -1)) : this.color;
         this.eShowBox.style.setProperty("--bgc", color);
         this.eShowBox.style.setProperty("--bgch", color);
         this.eDisplayName.style.color = color;
         this.eColorPickerColors.forEach(btn => {
-            if (btn.color == this.color) btn.classList.add("this");
+            if (btn.color == this.color)
+                btn.classList.add("this");
             else btn.classList.remove("this");
         });
     }
-    hasColor() { return this.color != null; }
     get ghost() { return this.#ghost; }
     set ghost(v) {
         v = !!v;

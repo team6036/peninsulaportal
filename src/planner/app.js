@@ -1056,7 +1056,7 @@ App.ProjectPage = class AppProjectPage extends App.ProjectPage {
                         d2: this.odometry2d.render.addRender(new RSelectable(this.odometry2d.render, null)),
                         d3: this.odometry3d.addRender(new Odometry3d.Render(this.odometry3d, 0, 0, GLOBALSTATE.getProperty("active-robot").value)),
                     };
-                    itemRenders[id].d3.color = "--cb";
+                    itemRenders[id].d3.color = "var(--cb)";
                 }
                 let render;
                 render = itemRenders[id].d2;
@@ -1849,7 +1849,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             let itms = getSelected();
             itms.forEach(itm => {
                 if (!(itm instanceof sublib.Project.Node)) return;
-                itm.color = "c"+color;
+                itm.color = "var(--c"+color+")";
             });
             this.page.editorRefresh();
         });
@@ -1986,7 +1986,7 @@ App.ProjectPage.ObjectsPanel = class AppProjectPageObjectsPanel extends App.Proj
             this.fColor.disabled = !has;
             if (allNode) {
                 let v = getSameValue(itm => itm.color);
-                if (v != null) this.fColor.value = PROPERTYCACHE.getColor("--"+v);
+                if (v != null) this.fColor.value = PROPERTYCACHE.getColor(v.slice(4, -1));
             }
 
             this.fGhost.disabled = !has;
@@ -2201,7 +2201,7 @@ App.ProjectPage.PathsPanel = class AppProjectPagePathsPanel extends App.ProjectP
                     d2: this.page.odometry2d.render.addRender(new RVisualItem2d(this.page.odometry2d.render, visual.visual)),
                     d3: this.page.odometry3d.addRender(new RVisualItem3d(this.page.odometry3d, visual.visual)),
                 };
-                visual.item.d3.color = "--cb";
+                visual.item.d3.color = "var(--cb)";
                 let theVisual = visual, theVisualId = visualId;
                 (async () => {
                     const clear = () => {
