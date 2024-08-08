@@ -742,8 +742,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         this.#showVelocity = true;
         this.#heading = 0;
 
-        this.#color = "cb";
-        this.#colorH = "cb5";
+        this.#color = "var(--cb)";
+        this.#colorH = "var(--cb5)";
 
         this.type = "§default";
 
@@ -768,11 +768,17 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
         this.addHandler("render", () => {
             const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
             const hovered = this.hovered;
+
+            const color = (this.color.startsWith("var(") && this.color.endsWith(")")) ? PROPERTYCACHE.get(this.color.slice(4, -1)) : this.color;
+            const colorH = (this.colorH.startsWith("var(") && this.colorH.endsWith(")")) ? PROPERTYCACHE.get(this.colorH.slice(4, -1)) : this.colorH;
+
             if (this.hasType() && this.hasBuiltinType()) {
                 const builtinType = this.builtinType;
                 if (["default", "node", "box", "target", "arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
                     if (!["node", "arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
-                        ctx.strokeStyle = PROPERTYCACHE.get("--"+this.color+"-8");
+
+                        ctx.globalAlpha *= 0.5;
+                        ctx.strokeStyle = color;
                         ctx.lineWidth = 7.5*quality;
                         ctx.lineJoin = "miter";
                         ctx.beginPath();
@@ -786,6 +792,8 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         }
                         ctx.closePath();
                         ctx.stroke();
+                        ctx.globalAlpha *= 2;
+
                         ctx.strokeStyle = PROPERTYCACHE.get("--v8");
                         ctx.lineWidth = 1*quality;
                         if (builtinType == "target") {
@@ -824,7 +832,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         }
                     }
                     if (["arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
-                        ctx.strokeStyle = PROPERTYCACHE.get("--"+((hovered == "heading") ? this.colorH : this.color));
+                        ctx.strokeStyle = (hovered == "heading") ? colorH : color;
                         ctx.lineWidth = 5*quality;
                         ctx.lineJoin = "round";
                         ctx.lineCap = "round";
@@ -858,7 +866,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                         ctx.fill();
                     }
                     if (!["box", "arrow", "arrow-h", "arrow-t"].includes(builtinType)) {
-                        ctx.fillStyle = PROPERTYCACHE.get("--"+((hovered == "main") ? this.colorH : this.color));
+                        ctx.fillStyle = (hovered == "main") ? colorH : color;
                         ctx.strokeStyle = PROPERTYCACHE.get("--v8");
                         ctx.lineWidth = 1*quality;
                         ctx.lineJoin = "round";
@@ -871,7 +879,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                 } else {
                     let typefs = {
                         "2023-cone": () => {
-                            ctx.fillStyle = PROPERTYCACHE.get("--"+(hovered ? this.colorH : this.color));
+                            ctx.fillStyle = hovered ? colorH : color;
                             ctx.strokeStyle = PROPERTYCACHE.get("--v8");
                             ctx.lineWidth = 1*quality;
                             ctx.lineJoin = "round";
@@ -893,7 +901,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                             ctx.fill();
                         },
                         "2023-cube": () => {
-                            ctx.fillStyle = PROPERTYCACHE.get("--"+(hovered ? this.colorH : this.color));
+                            ctx.fillStyle = hovered ? colorH : color;
                             ctx.strokeStyle = PROPERTYCACHE.get("--v8");
                             ctx.lineWidth = 1*quality;
                             ctx.lineJoin = "round";
@@ -920,7 +928,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
                                 ctx.lineWidth = 2*quality + this.odometry.worldLenToCanvas(5.5);
                                 ctx.stroke();
                             }
-                            ctx.strokeStyle = PROPERTYCACHE.get("--"+(hovered ? this.colorH : this.color));
+                            ctx.strokeStyle = hovered ? colorH : color;
                             ctx.lineWidth = this.odometry.worldLenToCanvas(5.5);
                             ctx.stroke();
                         },
@@ -946,7 +954,7 @@ Odometry2d.Robot = class Odometry2dRobot extends Odometry2d.Render {
             }
             if (hovered) {
                 hName.name = this.name;
-                hName.eName.style.color = "var(--"+this.color+")";
+                hName.eName.style.color = this.color;
                 hPosX.value = this.x;
                 hPosY.value = this.y;
                 hDir.value = this.heading;
@@ -1088,6 +1096,128 @@ Odometry2d.Obstacle = class Odometry2dObstacle extends Odometry2d.Render {
 
     get selected() { return this.#selected; }
     set selected(v) { this.#selected = !!v; }
+};
+Odometry2d.RLine = class Odometry2dRLine extends Odometry2d.Render {
+    #waypoints;
+    #color;
+    #size;
+    #startStyle;
+    #endStyle;
+
+    constructor(render, color="var(--v8)", size=7.5) {
+        super(render);
+
+        this.#waypoints = [];
+        this.#color = null;
+        this.#size = 0;
+        this.#startStyle = null;
+        this.#endStyle = null;
+
+        this.color = color;
+        this.size = size;
+
+        const renderEnd = (style, p0, p1) => {
+            const ctx = this.odometry.ctx, quality = this.odometry.quality;
+            if (style == null) return;
+            if (style == "node") {
+                ctx.beginPath();
+                ctx.arc(...p0.xy, this.size*2*quality, 0, 2*Math.PI);
+                ctx.fill();
+                return;
+            }
+            if (style == "arrow" || style == "stunt") {
+                if (!p1) return;
+                const dir = p1.towards(p0);
+                const angle = (style == "arrow") ? 135 : 90;
+                ctx.beginPath();
+                ctx.moveTo(...V.dir(dir-angle, this.size*3*quality).iadd(p0).xy);
+                ctx.lineTo(...p0.xy);
+                ctx.lineTo(...V.dir(dir+angle, this.size*3*quality).iadd(p0).xy);
+                ctx.stroke();
+                return;
+            }
+        };
+
+        this.addHandler("render", () => {
+            const ctx = this.odometry.ctx, quality = this.odometry.quality, padding = this.odometry.padding, scale = this.odometry.scale;
+            const waypoints = this.#waypoints.map(waypoint => this.odometry.worldToCanvas(waypoint));
+            ctx.fillStyle = ctx.strokeStyle = (this.color.startsWith("var(") && this.color.endsWith(")")) ? PROPERTYCACHE.get(this.color.slice(4, -1)) : this.color;
+            ctx.lineWidth = this.size*quality;
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            for (let i = 0; i < this.nWaypoints; i++) {
+                const waypoint = waypoints[i];
+                if (i > 0) ctx.lineTo(...waypoint.xy);
+                else ctx.moveTo(...waypoint.xy);
+            }
+            ctx.stroke();
+            if (waypoints.length <= 0) return;
+            const start0 = waypoints.at(0);
+            const start1 = waypoints.at(1);
+            const end0 = waypoints.at(-1);
+            const end1 = waypoints.at(-2);
+            renderEnd(this.startStyle, start0, start1);
+            renderEnd(this.endStyle, end0, end1);
+        });
+    }
+
+    get nWaypoints() { return this.#waypoints.length; }
+    get waypoints() { return [...this.#waypoints]; }
+    set waypoints(v) {
+        v = util.ensure(v, "arr");
+        this.clearWaypoints();
+        this.addWaypoint(v);
+    }
+    clearWaypoints() {
+        let waypoints = this.waypoints;
+        this.#waypoints = [];
+        return waypoints;
+    }
+    getWaypoint(i) {
+        i = util.ensure(i, "int");
+        if (i < 0 || i >= this.#waypoints.length) return null;
+        return this.#waypoints[i];
+    }
+    setWaypoint(i, pt) {
+        i = util.ensure(i, "int");
+        if (i < 0 || i >= this.#waypoints.length) return null;
+        pt = (pt instanceof V) ? pt : new V(pt);
+        [pt, this.#waypoints[i]] = [this.#waypoints[i], pt];
+        return pt;
+    }
+    addWaypoint(...pts) {
+        return util.Target.resultingForEach(pts, pt => {
+            pt = (pt instanceof V) ? pt : new V(pt);
+            this.#waypoints.push(pt);
+            return pt;
+        });
+    }
+    remWaypoint(...pts) {
+        return util.Target.resultingForEach(pts, pt => {
+            pt = (pt instanceof V) ? pt : new V(pt);
+            this.#waypoints.splice(this.#waypoints.indexOf(pt), 1);
+            return pt;
+        });
+    }
+    popWaypoint(...is) {
+        return util.Target.resultingForEach(is, i => {
+            i = util.ensure(i, "int");
+            if (i < 0 || i >= this.#waypoints.length) return false;
+            return this.#waypoints.splice(i, 1)[0];
+        });
+    }
+
+    get color() { return this.#color; }
+    set color(v) { this.#color = String(v); }
+
+    get size() { return this.#size; }
+    set size(v) { this.#size = Math.max(0, util.ensure(v, "num")); }
+
+    get startStyle() { return this.#startStyle; }
+    set startStyle(v) { this.#startStyle = (v == null) ? null : String(v); }
+    get endStyle() { return this.#endStyle; }
+    set endStyle(v) { this.#endStyle = (v == null) ? null : String(v); }
 };
 
 export class Odometry3d extends Odometry {
@@ -2146,7 +2276,7 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
         this.#defaultComponent = new this.constructor.Component(this, null);
 
         this.#name = "";
-        this.#color = "";
+        this.#color = "var(--v8)";
         this.#isGhost = false;
         this.#isSolid = false;
         this.#display = {};
@@ -2191,11 +2321,10 @@ Odometry3d.Render = class Odometry3dRender extends util.Target {
     set name(v) { this.#name = String(v); }
     get color() { return this.#color; }
     set color(v) {
-        v = (v == null) ? null : String(v);
+        v = String(v);
         if (this.color == v) return;
         this.change("color", this.color, this.#color=v);
     }
-    hasColor() { return this.color != null; }
 
     get isGhost() { return this.#isGhost; }
     set isGhost(v) {
@@ -2291,11 +2420,21 @@ Odometry3d.Render.Component = class Odometry3dRenderComponent extends util.Targe
             this.odometry.remHint(hint);
         });
 
+        let colorString = null;
+        let color = new util.Color(colorString);
+
         this.addHandler("update", delta => {
-            let color =
-                (this.render.hasColor() && this.render.color.startsWith("--")) ?
-                    PROPERTYCACHE.getColor(this.render.color) :
-                new util.Color(this.render.color);
+            if (this.render.color.startsWith("var(") && this.render.color.endsWith(")")) {
+                colorString = null;
+                color = PROPERTYCACHE.getColor(this.render.color.slice(4, -1));
+            } else {
+                let wantedColorString = this.render.color;
+                if (colorString != wantedColorString) {
+                    colorString = wantedColorString;
+                    color = new util.Color(colorString);
+                }
+            }
+
             if (this.render.hasType()) {
                 if (this.render.hasBuiltinType()) theModelObject = this.render.constructor.LOADEDOBJECTS[this.render.builtinType];
                 else if (!loadLock)

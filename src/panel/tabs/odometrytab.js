@@ -308,7 +308,8 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
                             let taken = new Array(colors.length).fill(false);
                             this.poses.forEach(pose => {
                                 colors.split("").forEach((c, i) => {
-                                    if (pose.color == "--c"+c) taken[i] = true;
+                                    if (pose.color == "var(--c"+c+")")
+                                        taken[i] = true;
                                 });
                             });
                             let nextColor = null;
@@ -320,7 +321,7 @@ export default class PanelOdometryTab extends PanelToolCanvasTab {
                             if (nextColor == null) nextColor = colors[this.poses.length%colors.length];
                             this.addPose(new this.constructor.Pose({
                                 path: pth,
-                                color: "--c"+nextColor,
+                                color: "var(--c"+nextColor+")",
                             }));
                         };
                         addPose(data.path);
@@ -424,7 +425,7 @@ PanelOdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             this.eColorPicker.appendChild(btn);
             this.#eColorPickerColors.push(btn);
             btn.classList.add("color");
-            btn.color = "--"+colors._;
+            btn.color = "var(--"+colors._+")";
             btn.style.setProperty("--bg", "var(--"+colors._+")");
             btn.style.setProperty("--bgh", "var(--"+colors.h+")");
             btn.style.setProperty("--bgd", "var(--"+colors.d+")");
@@ -500,7 +501,7 @@ PanelOdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
             itm = submenu.addItem(new core.Menu.Item(colors.name));
             itm.eLabel.style.color = "var(--"+colors._+")";
             itm.addHandler("trigger", e => {
-                this.color = "--"+colors._;
+                this.color = "var(--"+colors._+")";
             });
         });
         return menu;
@@ -526,19 +527,19 @@ PanelOdometryTab.Pose = class PanelOdometryTabPose extends util.Target {
     hide() { return this.hidden = true; }
     get color() { return this.#color; }
     set color(v) {
-        v = (v == null) ? null : String(v);
+        v = String(v);
         if (this.color == v) return;
         this.change("color", this.color, this.#color=v);
-        let color = this.hasColor() ? this.color.startsWith("--") ? PROPERTYCACHE.get(this.color) : this.color : "#fff";
+        let color = (this.color.startsWith("var(") && this.color.endsWith(")")) ? PROPERTYCACHE.get(this.color.slice(4, -1)) : this.color;
         this.eShowBox.style.setProperty("--bgc", color);
         this.eShowBox.style.setProperty("--bgch", color);
         this.eDisplayName.style.color = color;
         this.eColorPickerColors.forEach(btn => {
-            if (btn.color == this.color) btn.classList.add("this");
+            if (btn.color == this.color)
+                btn.classList.add("this");
             else btn.classList.remove("this");
         });
     }
-    hasColor() { return this.color != null; }
 
     get fHooks() { return this.#fHooks; }
 

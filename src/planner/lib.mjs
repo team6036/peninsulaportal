@@ -394,7 +394,7 @@ Project.Node = class ProjectNode extends Project.Item {
 
         this.#options = {};
 
-        this.#color = "cb";
+        this.#color = "var(--cb)";
         this.#ghost = false;
 
         this.velocity.addHandler("change", (c, f, t) => this.change("velocity."+c, f, t));
@@ -407,7 +407,7 @@ Project.Node = class ProjectNode extends Project.Item {
         this.useVelocity = util.ensure(a.useVelocity, "bool", true);
         this.options = a.options;
         this.type = a.type || "§default";
-        this.color = a.color || "cb";
+        this.color = a.color || "var(--cb)";
         this.ghost = a.ghost;
     }
 
